@@ -1,12 +1,14 @@
-// --- Interactive Calibration Sketch to Find Motor PPR ---
+/*
+ * Simple Motor Tester for NMB DIA42B10
+ * Controls: Serial Monitor
+ */
 
 const int PIN_PWM = 5;
 const int PIN_BRAKE = 4;
 const int PIN_DIR = 8;
-const int PIN_ENC_A = 2; // Interrupt pin
+const int PIN_ENC = 2; // Just to see if pulses are coming
 
-volatile long pulseCount = 0;
-unsigned long startTime;
+volatile long encoder_count = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -14,70 +16,76 @@ void setup() {
   pinMode(PIN_PWM, OUTPUT);
   pinMode(PIN_BRAKE, OUTPUT);
   pinMode(PIN_DIR, OUTPUT);
-  pinMode(PIN_ENC_A, INPUT_PULLUP);
+  pinMode(PIN_ENC, INPUT_PULLUP);
 
-  // Attach interrupt to count pulses continuously
-  attachInterrupt(digitalPinToInterrupt(PIN_ENC_A), countPulse, RISING);
+  // Attach interrupt just to see if encoder works
+  attachInterrupt(digitalPinToInterrupt(PIN_ENC), countPulse, RISING);
 
-  // Ensure motor is stopped initially
-  analogWrite(PIN_PWM, 0);
-  digitalWrite(PIN_BRAKE, LOW); // Brake engaged (Stop)
-  
-  Serial.println("--- Setup Complete ---");
+  // Initial State: STOPPED
+  digitalWrite(PIN_BRAKE, LOW); // Brake Engaged (Stop)
+  digitalWrite(PIN_DIR, LOW);   // CW
+  analogWrite(PIN_PWM, 0);      // 0 Speed
+
+  Serial.println("--- MOTOR TESTER ---");
+  Serial.println("Select a command:");
+  Serial.println(" '1' : Run Slow (PWM 50)");
+  Serial.println(" '2' : Run Medium (PWM 100)");
+  Serial.println(" '3' : Run Fast (PWM 200)");
+  Serial.println(" 's' : STOP (Brake Low)");
+  Serial.println(" 'r' : RELEASE Brake (Brake High) - Motor might free wheel");
+  Serial.println(" 'd' : Toggle Direction");
 }
 
 void loop() {
-  // 1. Wait for user input
-  Serial.println("\nType any character and press ENTER to start the 1-second test...");
-  
-  // This while loop blocks the code until you send data via Serial Monitor
-  while (Serial.available() == 0) {
-    // Do nothing, just wait
-  }
-  
-  // Clear the serial buffer (read the character you sent so we don't trigger twice)
-  while(Serial.available() > 0) {
-    Serial.read();
+  if (Serial.available()) {
+    char cmd = Serial.read();
+    
+    // Clear the rest of the buffer (newlines etc)
+    while(Serial.available() > 0) Serial.read();
+
+    if (cmd == '1') {
+      Serial.println("Running SLOW...");
+      digitalWrite(PIN_BRAKE, HIGH); // Release Brake
+      analogWrite(PIN_PWM, 50);
+    }
+    else if (cmd == '2') {
+      Serial.println("Running MEDIUM...");
+      digitalWrite(PIN_BRAKE, HIGH); // Release Brake
+      analogWrite(PIN_PWM, 100);
+    }
+    else if (cmd == '3') {
+      Serial.println("Running FAST...");
+      digitalWrite(PIN_BRAKE, HIGH); // Release Brake
+      analogWrite(PIN_PWM, 200);
+    }
+    else if (cmd == 's') {
+      Serial.println("STOPPING (Brake Engaged)...");
+      analogWrite(PIN_PWM, 0);
+      digitalWrite(PIN_BRAKE, LOW); // Engage Brake
+    }
+    else if (cmd == 'r') {
+      Serial.println("Brake Released (Motor should spin freely by hand)...");
+      analogWrite(PIN_PWM, 0);
+      digitalWrite(PIN_BRAKE, HIGH); // Disengage Brake
+    }
+    else if (cmd == 'd') {
+      // Toggle Direction
+      int currentDir = digitalRead(PIN_DIR);
+      digitalWrite(PIN_DIR, !currentDir);
+      Serial.print("Direction changed to: ");
+      Serial.println(!currentDir ? "LOW" : "HIGH");
+    }
   }
 
-  // 2. Prepare for Test
-  Serial.println("Starting in 1 second...");
-  delay(1000); // Short pause before movement
-  
-  // Reset Pulse Count
-  noInterrupts();
-  pulseCount = 0;
-  interrupts();
-  
-  // 3. RUN MOTOR
-  // Set direction
-  digitalWrite(PIN_DIR, LOW); 
-  // Release Brake
-  digitalWrite(PIN_BRAKE, HIGH); 
-  
-  Serial.println("Running...");
-  startTime = millis();
-  
-  // Set speed (adjust 100 to whatever speed allows you to count rotations easily)
-  analogWrite(PIN_PWM, 100); 
-
-  // 4. Wait exactly 1 second
-  while(millis() - startTime < 1000) {
-    // Just wait
+  // Print Encoder count every 1 second to verify it is alive
+  static unsigned long lastPrint = 0;
+  if (millis() - lastPrint > 1000) {
+    Serial.print("Encoder Count: ");
+    Serial.println(encoder_count);
+    lastPrint = millis();
   }
-  
-  // 5. STOP MOTOR
-  analogWrite(PIN_PWM, 0);
-  digitalWrite(PIN_BRAKE, LOW); // Engage Brake
-  
-  // 6. Report Results
-  Serial.println("--- Test Complete ---");
-  Serial.print("Pulses counted: ");
-  Serial.println(pulseCount);
-  Serial.println("-----------------------------");
-  Serial.println("Calculation: Pulses / Number of Rotations = PPR");
 }
 
 void countPulse() {
-  pulseCount++;
+  encoder_count++;
 }
