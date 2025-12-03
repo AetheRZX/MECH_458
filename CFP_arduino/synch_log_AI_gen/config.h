@@ -30,13 +30,13 @@ const int M2_ENC_A = 3; // Interrupt Pin
 
 //// PID TUNING ////
 // Master (Position Control)
-const float KP_M1 = 0.5;
-const float KI_M1 = 0.25;
+const float KP_M1 = 0.47;
+const float KI_M1 = 0.55;
 const float KD_M1 = 0.0;
 
 // Slave (Sync Control)
-const float KP_M2 = 0.15;
-const float KI_M2 = 0.00;
-const float KD_M2 = 0.00;
+const float KP_M2 = 0.3;
+const float KI_M2 = 0.005;
+const float KD_M2 = 0.02;
 
 #endif
