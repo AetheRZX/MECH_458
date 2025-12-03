@@ -24,9 +24,17 @@ long target_pos = 0;
 float kp = 2.0;  
 float ki = 0.05; 
 float integral_error = 0;
+float kd = 0.0;
+long last_error = 0;
 
 // State for zeroing
 bool isSynced = false; // False = Manual Mode, True = Auto Move
+
+// Forward declaration
+void manualJog(int motor, bool up);
+void countM1();
+void countM2();
+void runAutotune();
 
 void setup() {
   Serial.begin(115200);
@@ -52,6 +60,7 @@ void setup() {
   Serial.println("  'q' / 'a' : Jog Motor 1 (Up / Down)");
   Serial.println("  'w' / 's' : Jog Motor 2 (Up / Down)");
   Serial.println("  'z'       : SET zero");
+  Serial.println("  't'       : Run Autotune");
   Serial.println("  [number]  : Enter a value to Move platform");
   // Note that this is encoder pulses, so it probably will move as follow
   // input / PPR * pitch
@@ -68,6 +77,7 @@ void loop() {
     else if (input.equals("a")) { manualJog(1, false); }
     else if (input.equals("w")) { manualJog(2, true); }
     else if (input.equals("s")) { manualJog(2, false); }
+    else if (input.equals("t")) { runAutotune(); }
     
     // Check for Zero 
     else if (input.equalsIgnoreCase("z")) {
@@ -77,6 +87,8 @@ void loop() {
       interrupts();
       target_pos = 0;
       isSynced = true; // Engage holding
+      integral_error = 0;
+      last_error = 0;
       Serial.println("Zero Set! Position is now 0.");
     }
     
@@ -88,6 +100,8 @@ void loop() {
       } else {
          target_pos = new_target;
          isSynced = true;
+         integral_error = 0;
+         last_error = 0;
          Serial.print("Moving to: "); Serial.println(target_pos);
          // Release Brakes
          digitalWrite(M1_BRAKE, HIGH);
@@ -128,7 +142,9 @@ void loop() {
     // Anti-windup
     integral_error = constrain(integral_error, -500, 500);
     
-    float adjustment = (sync_error * kp) + (integral_error * ki);
+    float derivative = sync_error - last_error;
+    last_error = sync_error;
+    float adjustment = (sync_error * kp) + (integral_error * ki) + (derivative * kd);
     
     // Calculate Final Speeds
     int pwm1 = base_speed;
@@ -201,4 +217,130 @@ void countM1() {
 void countM2() {
   if (digitalRead(M2_DIR) == LOW) m2_pos++; 
   else m2_pos--; 
+}
+
+void runAutotune() {
+  Serial.println("Starting Autotune (Relay Method)...");
+  isSynced = false; 
+  
+  // 1. Lock Master (M1)
+  digitalWrite(M1_BRAKE, LOW); // Engage Brake
+  analogWrite(M1_PWM, 0);
+  
+  // 2. Prepare Slave (M2)
+  digitalWrite(M2_BRAKE, HIGH); // Release Brake
+  long start_pos = m1_pos; // Target is M1's current position
+  
+  // Tuning Parameters
+  int relay_pwm = 100;      // Power for the relay step
+  int hysteresis = 5;       // Noise buffer
+  int cycles = 0;
+  int max_cycles = 5;
+  
+  unsigned long t_last_cross = millis();
+  unsigned long t_period_sum = 0;
+  long amp_max = 0;
+  long amp_min = 0;
+  
+  bool relay_state = false; // false = backward, true = forward
+  
+  Serial.println("Oscillating...");
+  
+  // Initial kick
+  if (m2_pos < start_pos) {
+      digitalWrite(M2_DIR, LOW); // Forward
+      analogWrite(M2_PWM, relay_pwm);
+      relay_state = true;
+  } else {
+      digitalWrite(M2_DIR, HIGH); // Backward
+      analogWrite(M2_PWM, relay_pwm);
+      relay_state = false;
+  }
+  
+  unsigned long timeout = millis() + 10000; // 10s timeout
+  
+  while (cycles < max_cycles && millis() < timeout) {
+      long error = start_pos - m2_pos;
+      
+      // Track Amplitude
+      if (error > amp_max) amp_max = error;
+      if (error < amp_min) amp_min = error;
+      
+      // Relay Switching
+      if (relay_state && error < -hysteresis) {
+          // Switch to Backward
+          digitalWrite(M2_DIR, HIGH);
+          analogWrite(M2_PWM, relay_pwm);
+          relay_state = false;
+          
+          // Measure Period (on every full cycle, e.g., falling edge)
+          unsigned long now = millis();
+          unsigned long dt = now - t_last_cross;
+          t_last_cross = now;
+          
+          if (cycles > 0) { // Skip first partial cycle
+             t_period_sum += dt * 2; // Half cycle * 2 approx
+          }
+          cycles++;
+      }
+      else if (!relay_state && error > hysteresis) {
+          // Switch to Forward
+          digitalWrite(M2_DIR, LOW);
+          analogWrite(M2_PWM, relay_pwm);
+          relay_state = true;
+      }
+      
+      delay(1); // Small loop delay
+  }
+  
+  // Stop Motors
+  analogWrite(M2_PWM, 0);
+  digitalWrite(M2_BRAKE, LOW);
+  
+  if (cycles < max_cycles) {
+      Serial.println("Autotune Failed: Timeout or no oscillation.");
+      return;
+  }
+  
+  // Calculate PID
+  float avg_period_sec = (float)t_period_sum / (cycles - 1) / 1000.0; // Average period in seconds
+  long peak_to_peak = amp_max - amp_min;
+  float amplitude = peak_to_peak / 2.0;
+  
+  // Ziegler-Nichols (Classic PID)
+  // Ku = 4 * d / (pi * a)
+  // d = relay amplitude (PWM? No, effectively the force... but for position control, we approximate)
+  // Actually, for position control, the "output" is PWM (0-255) and "input" is Error (counts).
+  // This is tricky without a physical model. 
+  // Standard Relay method: Ku = 4 * Output_Step / (PI * Input_Oscillation_Amp)
+  
+  float output_step = relay_pwm; 
+  float Ku = (4.0 * output_step) / (3.14159 * amplitude);
+  
+  // PID Tuning Rules (Ziegler-Nichols)
+  // Kp = 0.6 Ku
+  // Ti = 0.5 Tu  -> Ki = Kp / Ti = 2 Kp / Tu
+  // Td = 0.125 Tu -> Kd = Kp * Td = Kp * Tu / 8
+  
+  float new_kp = 0.6 * Ku;
+  float new_ki = (2.0 * new_kp) / avg_period_sec;
+  float new_kd = (new_kp * avg_period_sec) / 8.0;
+  
+  // Apply
+  kp = new_kp;
+  ki = new_ki;
+  kd = new_kd;
+  
+  Serial.println("--- Autotune Complete ---");
+  Serial.print("Period (s): "); Serial.println(avg_period_sec);
+  Serial.print("Amplitude (cnts): "); Serial.println(amplitude);
+  Serial.print("Ku: "); Serial.println(Ku);
+  Serial.println("New PID Values:");
+  Serial.print("Kp: "); Serial.println(kp, 4);
+  Serial.print("Ki: "); Serial.println(ki, 4);
+  Serial.print("Kd: "); Serial.println(kd, 4);
+  
+  // Reset for normal op
+  integral_error = 0;
+  last_error = 0;
 }

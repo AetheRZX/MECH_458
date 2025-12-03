@@ -28,6 +28,14 @@ void loop() {
       Serial.println("MSG: Zero Set!"); 
     }
     
+    // Autotune
+    else if (input.equalsIgnoreCase("t")) {
+      MotorControl::runAutotuneM1();
+    }
+    else if (input.equalsIgnoreCase("y")) {
+      MotorControl::runAutotuneM2();
+    }
+    
     // Emergency Halt (Sets target to current position)
     else if (input.equalsIgnoreCase("h")) {
       MotorControl::emergencyHalt();

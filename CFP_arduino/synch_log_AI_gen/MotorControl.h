@@ -19,6 +19,10 @@ public:
     static void emergencyHalt();
     static void updateRPM(unsigned long intervalMs);
     
+    // Autotune
+    static void runAutotuneM1(); // Tune Master (Position)
+    static void runAutotuneM2(); // Tune Slave (Sync)
+    
     // Telemetry getters
     static long getM1Pos();
     static long getM2Pos();
@@ -60,6 +64,10 @@ private:
     static long last_error_m2;
 
     static bool isSynced;
+    
+    // Autotune Helpers
+    static bool measureSystemM1(float &period_sec, float &amplitude);
+    static bool measureSystemM2(float &period_sec, float &amplitude);
 };
 
 #endif

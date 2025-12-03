@@ -188,3 +188,249 @@ void MotorControl::updateRPM(unsigned long intervalMs) {
 float MotorControl::getM1RPM() { return m1_rpm; }
 float MotorControl::getM2RPM() { return m2_rpm; }
 
+// --- AUTOTUNE IMPLEMENTATION ---
+
+// Helper: Measure System Response (Relay Method)
+bool MotorControl::measureSystemM1(float &period_sec, float &amplitude) {
+  isSynced = false; 
+  
+  // Lock Slave (M2)
+  digitalWrite(M2_BRAKE, HIGH); 
+  analogWrite(M2_PWM, 0);
+  
+  // Prepare Master (M1)
+  digitalWrite(M1_BRAKE, HIGH); 
+  long start_pos = m1_pos; 
+  
+  int relay_pwm = 80; 
+  int hysteresis = 5;       
+  int cycles = 0;
+  int max_cycles = 5;
+  
+  unsigned long t_last_cross = millis();
+  unsigned long t_period_sum = 0;
+  long amp_max = 0;
+  long amp_min = 0;
+  
+  bool relay_state = false; 
+  
+  // Initial kick
+  if (m1_pos < start_pos) {
+      digitalWrite(M1_DIR, LOW); analogWrite(M1_PWM, relay_pwm); relay_state = true;
+  } else {
+      digitalWrite(M1_DIR, HIGH); analogWrite(M1_PWM, relay_pwm); relay_state = false;
+  }
+  
+  unsigned long timeout = millis() + 5000; 
+  
+  while (cycles < max_cycles && millis() < timeout) {
+      long error = start_pos - m1_pos;
+      if (error > amp_max) amp_max = error;
+      if (error < amp_min) amp_min = error;
+      
+      if (relay_state && error < -hysteresis) {
+          digitalWrite(M1_DIR, HIGH); analogWrite(M1_PWM, relay_pwm); relay_state = false;
+          unsigned long now = millis();
+          unsigned long dt = now - t_last_cross;
+          t_last_cross = now;
+          if (cycles > 0) t_period_sum += dt * 2; 
+          cycles++;
+      }
+      else if (!relay_state && error > hysteresis) {
+          digitalWrite(M1_DIR, LOW); analogWrite(M1_PWM, relay_pwm); relay_state = true;
+      }
+      delay(1); 
+  }
+  
+  analogWrite(M1_PWM, 0);
+  digitalWrite(M1_BRAKE, LOW); 
+  
+  if (cycles < max_cycles) return false;
+  
+  period_sec = (float)t_period_sum / (cycles - 1) / 1000.0; 
+  long peak_to_peak = amp_max - amp_min;
+  amplitude = peak_to_peak / 2.0;
+  return true;
+}
+
+bool MotorControl::measureSystemM2(float &period_sec, float &amplitude) {
+  isSynced = false; 
+  
+  // Lock Master (M1)
+  digitalWrite(M1_BRAKE, LOW); 
+  analogWrite(M1_PWM, 0);
+  
+  // Prepare Slave (M2)
+  digitalWrite(M2_BRAKE, HIGH); 
+  long target_sync_pos = m1_pos; 
+  
+  int relay_pwm = 80;      
+  int hysteresis = 5;       
+  int cycles = 0;
+  int max_cycles = 5;
+  
+  unsigned long t_last_cross = millis();
+  unsigned long t_period_sum = 0;
+  long amp_max = 0;
+  long amp_min = 0;
+  
+  bool relay_state = false; 
+  
+  // Initial kick
+  if ((target_sync_pos - m2_pos) > 0) {
+      digitalWrite(M2_DIR, LOW); analogWrite(M2_PWM, relay_pwm); relay_state = true;
+  } else {
+      digitalWrite(M2_DIR, HIGH); analogWrite(M2_PWM, relay_pwm); relay_state = false;
+  }
+  
+  unsigned long timeout = millis() + 5000; 
+  
+  while (cycles < max_cycles && millis() < timeout) {
+      long error = target_sync_pos - m2_pos;
+      if (error > amp_max) amp_max = error;
+      if (error < amp_min) amp_min = error;
+      
+      if (relay_state && error < -hysteresis) {
+          digitalWrite(M2_DIR, HIGH); analogWrite(M2_PWM, relay_pwm); relay_state = false;
+          unsigned long now = millis();
+          unsigned long dt = now - t_last_cross;
+          t_last_cross = now;
+          if (cycles > 0) t_period_sum += dt * 2; 
+          cycles++;
+      }
+      else if (!relay_state && error > hysteresis) {
+          digitalWrite(M2_DIR, LOW); analogWrite(M2_PWM, relay_pwm); relay_state = true;
+      }
+      delay(1); 
+  }
+  
+  analogWrite(M2_PWM, 0);
+  digitalWrite(M2_BRAKE, LOW);
+  
+  if (cycles < max_cycles) return false;
+  
+  period_sec = (float)t_period_sum / (cycles - 1) / 1000.0; 
+  long peak_to_peak = amp_max - amp_min;
+  amplitude = peak_to_peak / 2.0;
+  return true;
+}
+
+// Robust Multi-Point Tuning
+void MotorControl::runAutotuneM1() {
+  Serial.println("Starting Robust Autotune M1...");
+  
+  long targets[] = {100, 200, 300, 0, 400, 500};
+  int num_targets = 6;
+  
+  float sum_Ku = 0;
+  float sum_Tu = 0;
+  int valid_points = 0;
+  
+  for (int i = 0; i < num_targets; i++) {
+      long t = targets[i];
+      Serial.print("Moving to "); Serial.println(t);
+      
+      // Move to target
+      setTarget(t);
+      unsigned long move_start = millis();
+      while (abs(t - m1_pos) > 10 && millis() - move_start < 3000) {
+          update();
+          delay(1);
+      }
+      delay(500); // Settle
+      
+      // Measure
+      float Tu, Amp;
+      Serial.print("Measuring at "); Serial.println(t);
+      if (measureSystemM1(Tu, Amp)) {
+          float output_step = 80.0; 
+          float Ku = (4.0 * output_step) / (3.14159 * Amp);
+          sum_Ku += Ku;
+          sum_Tu += Tu;
+          valid_points++;
+          Serial.print("  Ku: "); Serial.print(Ku); Serial.print(" Tu: "); Serial.println(Tu);
+      } else {
+          Serial.println("  Measurement Failed.");
+      }
+  }
+  
+  if (valid_points == 0) {
+      Serial.println("Autotune Failed: No valid points.");
+      return;
+  }
+  
+  float avg_Ku = sum_Ku / valid_points;
+  float avg_Tu = sum_Tu / valid_points;
+  
+  kp_m1 = 0.6 * avg_Ku;
+  ki_m1 = (2.0 * kp_m1) / avg_Tu;
+  kd_m1 = (kp_m1 * avg_Tu) / 8.0;
+  
+  Serial.println("--- M1 Robust Tuned ---");
+  Serial.print("Avg Ku: "); Serial.println(avg_Ku);
+  Serial.print("Avg Tu: "); Serial.println(avg_Tu);
+  Serial.print("Kp1: "); Serial.println(kp_m1, 4);
+  Serial.print("Ki1: "); Serial.println(ki_m1, 4);
+  Serial.print("Kd1: "); Serial.println(kd_m1, 4);
+  
+  setZero(); // Reset state
+}
+
+void MotorControl::runAutotuneM2() {
+  Serial.println("Starting Robust Autotune M2...");
+  
+  long targets[] = {100, 200, 300, 0, 400, 500};
+  int num_targets = 6;
+  
+  float sum_Ku = 0;
+  float sum_Tu = 0;
+  int valid_points = 0;
+  
+  for (int i = 0; i < num_targets; i++) {
+      long t = targets[i];
+      Serial.print("Moving to "); Serial.println(t);
+      
+      setTarget(t);
+      unsigned long move_start = millis();
+      while (abs(t - m1_pos) > 10 && millis() - move_start < 3000) {
+          update();
+          delay(1);
+      }
+      delay(500); 
+      
+      float Tu, Amp;
+      Serial.print("Measuring at "); Serial.println(t);
+      if (measureSystemM2(Tu, Amp)) {
+          float output_step = 80.0; 
+          float Ku = (4.0 * output_step) / (3.14159 * Amp);
+          sum_Ku += Ku;
+          sum_Tu += Tu;
+          valid_points++;
+          Serial.print("  Ku: "); Serial.print(Ku); Serial.print(" Tu: "); Serial.println(Tu);
+      } else {
+          Serial.println("  Measurement Failed.");
+      }
+  }
+  
+  if (valid_points == 0) {
+      Serial.println("Autotune Failed.");
+      return;
+  }
+  
+  float avg_Ku = sum_Ku / valid_points;
+  float avg_Tu = sum_Tu / valid_points;
+  
+  kp_m2 = 0.6 * avg_Ku;
+  ki_m2 = (2.0 * kp_m2) / avg_Tu;
+  kd_m2 = (kp_m2 * avg_Tu) / 8.0;
+  
+  Serial.println("--- M2 Robust Tuned ---");
+  Serial.print("Avg Ku: "); Serial.println(avg_Ku);
+  Serial.print("Avg Tu: "); Serial.println(avg_Tu);
+  Serial.print("Kp2: "); Serial.println(kp_m2, 4);
+  Serial.print("Ki2: "); Serial.println(ki_m2, 4);
+  Serial.print("Kd2: "); Serial.println(kd_m2, 4);
+  
+  setZero();
+}
+
