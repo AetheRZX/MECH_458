@@ -38,5 +38,6 @@ const float KD_M1 = 0.0;
 const float KP_M2 = 0.3;
 const float KI_M2 = 0.005;
 const float KD_M2 = 0.02;
+const int SYNC_DEADBAND = 3; // Pulses (Stop correcting if error is small)
 
 #endif

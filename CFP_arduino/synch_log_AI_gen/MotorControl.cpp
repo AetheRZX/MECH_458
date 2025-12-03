@@ -83,6 +83,12 @@ void MotorControl::update() {
         // Error = Master - Slave
         long error_sync = m1_pos - m2_pos;
         
+        // Deadband for Sync
+        if (abs(error_sync) < SYNC_DEADBAND) {
+             error_sync = 0;
+             integral_error_m2 = 0; 
+        }
+        
         integral_error_m2 += error_sync;
         integral_error_m2 = constrain(integral_error_m2, -500, 500);
 
