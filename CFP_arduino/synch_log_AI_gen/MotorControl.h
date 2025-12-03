@@ -45,13 +45,20 @@ private:
     static unsigned long lastRpmCalcTime;
 
     // Control
+    // Control
     static int global_pwm1;
     static int global_pwm2;
-    static float kp;
-    static float ki;
-    static float kd;
-    static float integral_error;
-    static long last_sync_error;
+    
+    // Master PID (Position)
+    static float kp_m1, ki_m1, kd_m1;
+    static float integral_error_m1;
+    static long last_error_m1;
+
+    // Slave PID (Sync)
+    static float kp_m2, ki_m2, kd_m2;
+    static float integral_error_m2;
+    static long last_error_m2;
+
     static bool isSynced;
 };
 

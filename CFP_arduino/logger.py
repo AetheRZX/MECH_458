@@ -36,7 +36,9 @@ def read_from_serial():
                     raw = ser.readline().decode('utf-8', errors='ignore').strip()
                     if "," in raw:
                         data = raw.split(',')
-                        if len(data) == 8: writer.writerow(data)
+                        if len(data) == 8: 
+                            writer.writerow(data)
+                            file.flush() # Ensure data is written immediately for live plotter
                     elif raw:
                         print(f"[Arduino]: {raw}")
             except Exception:

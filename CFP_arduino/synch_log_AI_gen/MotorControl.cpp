@@ -13,11 +13,20 @@ unsigned long MotorControl::lastRpmCalcTime = 0;
 
 int MotorControl::global_pwm1 = 0;
 int MotorControl::global_pwm2 = 0;
-float MotorControl::kp = KP_DEFAULT;
-float MotorControl::ki = KI_DEFAULT;
-float MotorControl::kd = KD_DEFAULT;
-float MotorControl::integral_error = 0;
-long MotorControl::last_sync_error = 0;
+// Master PID
+float MotorControl::kp_m1 = KP_M1;
+float MotorControl::ki_m1 = KI_M1;
+float MotorControl::kd_m1 = KD_M1;
+float MotorControl::integral_error_m1 = 0;
+long MotorControl::last_error_m1 = 0;
+
+// Slave PID
+float MotorControl::kp_m2 = KP_M2;
+float MotorControl::ki_m2 = KI_M2;
+float MotorControl::kd_m2 = KD_M2;
+float MotorControl::integral_error_m2 = 0;
+long MotorControl::last_error_m2 = 0;
+
 bool MotorControl::isSynced = false;
 
 void MotorControl::init() {
@@ -48,50 +57,78 @@ void MotorControl::update() {
     // I will implement a `calculateRPM` method that can be called.
     
     if (isSynced) {
+        // ---- MASTER MOTOR (Position Control) ----
         long error_m1 = target_pos - m1_pos;
-        int base_speed = 0;
-
-        // Deadband (Stop if close)
+        
+        // Deadband
         if (abs(error_m1) < 10) {
-            base_speed = 0;
-            integral_error = 0; 
+            error_m1 = 0;
+            integral_error_m1 = 0;
+        }
+
+        integral_error_m1 += error_m1;
+        integral_error_m1 = constrain(integral_error_m1, -1000, 1000); // Anti-windup
+
+        long derivative_m1 = error_m1 - last_error_m1;
+        last_error_m1 = error_m1;
+
+        float output_m1 = (error_m1 * kp_m1) + (integral_error_m1 * ki_m1) + (derivative_m1 * kd_m1);
+        
+        // Speed Limiting (Cruise Speed)
+        // We can clamp the output to SPEED_CRUISE
+        int pwm_m1 = constrain(output_m1, -SPEED_CRUISE, SPEED_CRUISE);
+        
+        // ---- SLAVE MOTOR (Sync Control) ----
+        // Target for M2 is M1's position (or we can use target_pos, but syncing to M1 is safer)
+        // Error = Master - Slave
+        long error_sync = m1_pos - m2_pos;
+        
+        integral_error_m2 += error_sync;
+        integral_error_m2 = constrain(integral_error_m2, -500, 500);
+
+        long derivative_m2 = error_sync - last_error_m2;
+        last_error_m2 = error_sync;
+
+        float adjustment = (error_sync * kp_m2) + (integral_error_m2 * ki_m2) + (derivative_m2 * kd_m2);
+        
+        // Slave PWM is Master PWM + Adjustment
+        // But we need to handle direction. 
+        // If pwm_m1 is positive, we are moving forward.
+        // If pwm_m1 is negative, we are moving backward.
+        // The adjustment should add/subtract speed.
+        
+        int pwm_m2 = pwm_m1 + adjustment;
+        
+        // ---- APPLY TO HARDWARE ----
+        
+        // Motor 1
+        if (pwm_m1 == 0) {
+            analogWrite(M1_PWM, 0);
+            digitalWrite(M1_BRAKE, LOW); // Or HIGH to hold? Let's use LOW for now as per original
         } else {
-            // Direction
-            if (error_m1 > 0) digitalWrite(M1_DIR, LOW); // Check wiring if reversed!
-            else digitalWrite(M1_DIR, HIGH); 
-            
-            // Speed Profile (Soft Start/Stop)
-            if (abs(error_m1) < 200) base_speed = SPEED_SLOW; 
-            else base_speed = SPEED_CRUISE; // Limiting max speed here
+            digitalWrite(M1_BRAKE, HIGH);
+            if (pwm_m1 > 0) digitalWrite(M1_DIR, LOW);
+            else digitalWrite(M1_DIR, HIGH);
+            analogWrite(M1_PWM, abs(pwm_m1));
+        }
+
+        // Motor 2
+        if (pwm_m2 == 0 && pwm_m1 == 0) {
+             analogWrite(M2_PWM, 0);
+             digitalWrite(M2_BRAKE, LOW);
+        } else {
+             digitalWrite(M2_BRAKE, HIGH);
+             // Direction depends on sign of pwm_m2
+             if (pwm_m2 > 0) digitalWrite(M2_DIR, LOW); // Assuming same wiring
+             else digitalWrite(M2_DIR, HIGH);
+             
+             // Safety clamp
+             int safe_pwm2 = constrain(abs(pwm_m2), 0, 255);
+             analogWrite(M2_PWM, safe_pwm2);
         }
         
-        // Slave Logic (PID)
-        long sync_error = m1_pos - m2_pos;
-        integral_error += sync_error;
-        integral_error = constrain(integral_error, -500, 500); // Anti-windup
-        
-        long derivative = sync_error - last_sync_error;
-        last_sync_error = sync_error;
-        
-        float adjustment = (sync_error * kp) + (integral_error * ki) + (derivative * kd);
-        
-        global_pwm1 = base_speed;
-        global_pwm2 = base_speed + adjustment;
-        
-        // Apply to Hardware
-        if (base_speed == 0) {
-           // Stop and Hold
-           global_pwm1 = 0; global_pwm2 = 0; 
-           digitalWrite(M1_BRAKE, LOW); digitalWrite(M2_BRAKE, LOW);
-        } else {
-           // Run
-           digitalWrite(M1_BRAKE, HIGH); digitalWrite(M2_BRAKE, HIGH);
-           int safe_pwm2 = constrain(global_pwm2, 0, 255);
-           analogWrite(M1_PWM, global_pwm1);
-           analogWrite(M2_PWM, safe_pwm2);
-           // Sync Direction
-           digitalWrite(M2_DIR, digitalRead(M1_DIR));
-        }
+        global_pwm1 = pwm_m1;
+        global_pwm2 = pwm_m2;
     }
 }
 
@@ -117,7 +154,10 @@ void MotorControl::setTarget(long target) {
 void MotorControl::setZero() {
     noInterrupts(); m1_pos = 0; m2_pos = 0; interrupts();
     noInterrupts(); m1_pos = 0; m2_pos = 0; interrupts();
-    target_pos = 0; integral_error = 0; last_sync_error = 0; isSynced = true;
+    target_pos = 0; 
+    integral_error_m1 = 0; last_error_m1 = 0;
+    integral_error_m2 = 0; last_error_m2 = 0;
+    isSynced = true;
 }
 
 void MotorControl::emergencyHalt() {
