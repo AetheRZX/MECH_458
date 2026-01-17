@@ -1,0 +1,29 @@
+%%{init: {"theme":"neutral","themeVariables":{"fontFamily":"Segoe UI, Arial, sans-serif","fontSize":"14px","primaryColor":"#F3F5F7","primaryTextColor":"#1B1F24","secondaryColor":"#E8EEF4","tertiaryColor":"#FFFFFF","lineColor":"#4B5563","textColor":"#1B1F24","mainBkg":"#FFFFFF","nodeBorder":"#9AA4B2","clusterBkg":"#F8FAFC","clusterBorder":"#CBD5E1"}}}%%flowchart TB
+    subgraph DRIVES["MOTOR DRIVES"]
+        subgraph ROT["ROTATION"]
+            VFD["VFD<br/>0.75 HP"]
+        end
+        
+        subgraph LIFT["LIFTING - SYNCHRONIZED"]
+            S1["Servo Drive 1<br/>MASTER"]
+            S2["Servo Drive 2<br/>SLAVE"]
+        end
+    end
+
+    subgraph MOTORS["MOTORS"]
+        M_ROT["Rotation Motor<br/>0.75 HP<br/>1750 RPM"]
+        M1["Lift Motor 1<br/>750W"]
+        M2["Lift Motor 2<br/>750W"]
+    end
+
+    subgraph MECHANICAL["MECHANICAL OUTPUT"]
+        GB["Worm Gearbox<br/>1750:1"]
+        LS1["Lead Screw 1"]
+        LS2["Lead Screw 2"]
+    end
+
+    VFD --> M_ROT --> GB
+    S1 --> M1 --> LS1
+    S2 --> M2 --> LS2
+
+    S1 -.->|"Gear 1:1"| S2

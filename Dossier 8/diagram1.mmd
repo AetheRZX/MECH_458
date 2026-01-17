@@ -1,0 +1,30 @@
+%%{init: {"theme":"neutral","themeVariables":{"fontFamily":"Segoe UI, Arial, sans-serif","fontSize":"14px","primaryColor":"#F3F5F7","primaryTextColor":"#1B1F24","secondaryColor":"#E8EEF4","tertiaryColor":"#FFFFFF","lineColor":"#4B5563","textColor":"#1B1F24","mainBkg":"#FFFFFF","nodeBorder":"#9AA4B2","clusterBkg":"#F8FAFC","clusterBorder":"#CBD5E1"}}}%%flowchart TB
+    subgraph POWER["POWER INPUT"]
+        P1["3-phase 240V AC<br/>Main Supply"]
+        P2["Main Breaker"]
+        P3["E-Stop Circuit"]
+    end
+
+    subgraph PLC["MAIN PLC CONTROLLER"]
+        PLC1["PLC Controller"]
+        PLC2["Motion Control Module"]
+        PLC3["Safety Logic"]
+    end
+
+    subgraph HMI_BLOCK["HMI PANEL"]
+        HMI1["7 in Touchscreen"]
+        HMI2["Angle Display"]
+        HMI3["Height Display"]
+        HMI4["Status/Alarms"]
+        HMI5["Manual Jog"]
+    end
+
+    subgraph COMM["COMMUNICATION BUS"]
+        COMM1["EtherNet/IP"]
+        COMM2["EtherCAT Motion"]
+    end
+
+    P1 --> P2 --> P3
+    P3 --> PLC
+    PLC <--> COMM
+    HMI_BLOCK <--> COMM

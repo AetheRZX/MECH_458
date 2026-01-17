@@ -1,0 +1,41 @@
+%%{init: {"theme":"neutral","themeVariables":{"fontFamily":"Segoe UI, Arial, sans-serif","fontSize":"14px","primaryColor":"#F3F5F7","primaryTextColor":"#1B1F24","secondaryColor":"#E8EEF4","tertiaryColor":"#FFFFFF","lineColor":"#4B5563","textColor":"#1B1F24","mainBkg":"#FFFFFF","nodeBorder":"#9AA4B2","clusterBkg":"#F8FAFC","clusterBorder":"#CBD5E1"}}}%%flowchart TB
+    subgraph HMI_SCREEN["FLIPTABLE CONTROL SYSTEM HMI"]
+        subgraph HEADER["HEADER BAR"]
+            TITLE["System Title"]
+            STOP_BTN["STOP Button"]
+            RESET_BTN["RESET Button"]
+        end
+
+        subgraph MAIN_DISPLAY["MAIN DISPLAY AREA"]
+            subgraph ROT_PANEL["ROTATION PANEL"]
+                DIAL["Dial Gauge<br/>Graphic"]
+                ANGLE["Angle: 45.25 deg"]
+                ROT_STATUS["Status: HOLD"]
+                ROT_TARGET["Target Input"]
+                ROT_BTNS["JOG- | GO | JOG+"]
+            end
+
+            subgraph LIFT_PANEL["LIFTING STATUS PANEL"]
+                C1["Corner 1: 1250.32 mm OK"]
+                C2["Corner 2: 1250.28 mm OK"]
+                C3["Corner 3: 1250.35 mm OK"]
+                C4["Corner 4: 1250.30 mm OK"]
+                AVG["Average: 1250.31 mm"]
+                LVL["Level: 0.02 deg OK"]
+                LIFT_TARGET["Target Input"]
+                LIFT_BTNS["DOWN | GO | UP"]
+            end
+        end
+
+        subgraph CONTROL_BAR["CONTROL BAR"]
+            MODE["Mode: AUTO / MANUAL"]
+            SPEED["Speed: SLOW / NORMAL / FAST"]
+        end
+
+        subgraph ALARM_BAR["ALARM BAR"]
+            ALARMS["Current Alarms: None"]
+            HIST["Alarm History Button"]
+        end
+    end
+
+    HEADER --> MAIN_DISPLAY --> CONTROL_BAR --> ALARM_BAR

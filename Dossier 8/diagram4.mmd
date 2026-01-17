@@ -1,0 +1,26 @@
+%%{init: {"theme":"neutral","themeVariables":{"fontFamily":"Segoe UI, Arial, sans-serif","fontSize":"14px","primaryColor":"#F3F5F7","primaryTextColor":"#1B1F24","secondaryColor":"#E8EEF4","tertiaryColor":"#FFFFFF","lineColor":"#4B5563","textColor":"#1B1F24","mainBkg":"#FFFFFF","nodeBorder":"#9AA4B2","clusterBkg":"#F8FAFC","clusterBorder":"#CBD5E1"}}}%%flowchart TB
+    subgraph MASTER["PLC MOTION MASTER"]
+        CMD["Position Command"]
+        VEL["Velocity Profile"]
+        MON["Sync Monitoring"]
+    end
+
+    subgraph NETWORK["EtherCAT RING<br/>1ms Cycle Time"]
+        NET["High-Speed<br/>Communication"]
+    end
+
+    subgraph AXES["SYNCHRONIZED AXES"]
+        AX1["SERVO 1 - MASTER<br/>Gear Ratio: 1:1<br/>Following Error: +/-0.5 mm"]
+        AX2["SERVO 2 - SLAVE<br/>Gear Ratio: 1:1<br/>Following Error: +/-0.5 mm"]
+    end
+
+    subgraph PLATFORM["LIFTING PLATFORM"]
+        PLAT["Level Tolerance: +/-0.1 deg<br/>Max Deviation: +/-1.0 mm"]
+    end
+
+    MASTER --> NET
+    NET --> AX1
+    NET --> AX2
+    
+    AX1 --> PLATFORM
+    AX2 --> PLATFORM

@@ -1,0 +1,36 @@
+%%{init: {"theme":"neutral","themeVariables":{"fontFamily":"Segoe UI, Arial, sans-serif","fontSize":"14px","primaryColor":"#F3F5F7","primaryTextColor":"#1B1F24","secondaryColor":"#E8EEF4","tertiaryColor":"#FFFFFF","lineColor":"#4B5563","textColor":"#1B1F24","mainBkg":"#FFFFFF","nodeBorder":"#9AA4B2","clusterBkg":"#F8FAFC","clusterBorder":"#CBD5E1"}}}%%flowchart LR
+    subgraph ROTATION_FB["ROTATION FEEDBACK"]
+        RE["Absolute Encoder<br/>17-bit<br/>131,072 counts/rev"]
+        HS["Home Sensor<br/>Inductive Proximity"]
+        ORL["Over-rotation<br/>Limit Switch"]
+    end
+
+    subgraph LIFTING_FB["LIFTING FEEDBACK"]
+        SE1["Servo Encoder 1"]
+        SE2["Servo Encoder 2"]
+        LE["Linear Encoder<br/>0.01 mm resolution"]
+        INC["Inclinometer<br/>+/-0.1 deg accuracy"]
+    end
+
+    subgraph LIMITS["LIMIT SWITCHES"]
+        UL["Upper Limits x4"]
+        LL["Lower Limits x4"]
+    end
+
+    subgraph PLC_IN["PLC INPUTS"]
+        AI["Analog Inputs"]
+        DI["Digital Inputs"]
+        ENC["Encoder Inputs"]
+    end
+
+    RE --> ENC
+    HS --> DI
+    ORL --> DI
+    
+    SE1 --> ENC
+    SE2 --> ENC
+    LE --> ENC
+    INC --> AI
+    
+    UL --> DI
+    LL --> DI

@@ -1,0 +1,41 @@
+%%{init: {"theme":"neutral","themeVariables":{"fontFamily":"Segoe UI, Arial, sans-serif","fontSize":"14px","primaryColor":"#F3F5F7","primaryTextColor":"#1B1F24","secondaryColor":"#E8EEF4","tertiaryColor":"#FFFFFF","lineColor":"#4B5563","textColor":"#1B1F24","mainBkg":"#FFFFFF","nodeBorder":"#9AA4B2","clusterBkg":"#F8FAFC","clusterBorder":"#CBD5E1"}}}%%flowchart TB
+    subgraph ESTOPS["EMERGENCY STOPS"]
+        ES1["E-Stop 1"]
+        ES2["E-Stop 2"]
+        ES3["E-Stop 3"]
+        ES4["E-Stop 4"]
+    end
+
+    subgraph SAFETY_DEVICES["SAFETY DEVICES"]
+        LS["Limit Switches"]
+        LC["Light Curtain"]
+        DI["Door Interlock"]
+    end
+
+    subgraph SAFETY_RELAY["SAFETY RELAY"]
+        SR["Dual-Channel<br/>Safety Logic"]
+    end
+
+    subgraph OUTPUTS["SAFETY OUTPUTS"]
+        VFD_EN["VFD Enable"]
+        SERVO_EN["Servo Enable"]
+        BRAKE["Brake Release"]
+    end
+
+    subgraph PLC_SAFETY["PLC SAFETY INPUT"]
+        STATUS["Status Monitoring<br/>& Diagnostics"]
+    end
+
+    ES1 --> SR
+    ES2 --> SR
+    ES3 --> SR
+    ES4 --> SR
+    
+    LS --> SR
+    LC --> SR
+    DI --> SR
+    
+    SR --> VFD_EN
+    SR --> SERVO_EN
+    SR --> BRAKE
+    SR --> STATUS
