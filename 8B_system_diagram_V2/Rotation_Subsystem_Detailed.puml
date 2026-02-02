@@ -1,0 +1,177 @@
+@startuml Rotation_Subsystem_Detailed
+
+' Professional styling
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 60
+skinparam dpi 300
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+left to right direction
+hide stereotype
+
+' ==================== COLOR PALETTE ====================
+' Control Input: Blue
+skinparam rectangle<<Input>> {
+    BackgroundColor #e3f2fd
+    BorderColor #1565c0
+    FontColor #0d47a1
+    FontStyle bold
+}
+
+' Rotation Components: Teal
+skinparam rectangle<<Rot>> {
+    BackgroundColor #e0f2f1
+    BorderColor #00897b
+    FontColor #00695c
+    FontStyle bold
+}
+
+' Mechanical: Orange
+skinparam rectangle<<Mech>> {
+    BackgroundColor #fff3e0
+    BorderColor #ef6c00
+    FontColor #e65100
+}
+
+' Structure: Grey
+skinparam rectangle<<Struct>> {
+    BackgroundColor #eceff1
+    BorderColor #546e7a
+    FontColor #37474f
+    BorderStyle dashed
+}
+
+' Safety: Red
+skinparam rectangle<<Safety>> {
+    BackgroundColor #ffebee
+    BorderColor #d32f2f
+    FontColor #b71c1c
+    BorderThickness 2
+}
+
+' Sensor: Amber
+skinparam rectangle<<Sensor>> {
+    BackgroundColor #fff8e1
+    BorderColor #f57c00
+    FontColor #e65100
+}
+
+' ==================== SYSTEM INPUT ====================
+rectangle "VFD Output\n**Inverter (1-Phase)**" as VFD <<Input>>
+
+rectangle "Brake Control\n**from PLC**" as BrakeCtrl <<Input>>
+
+rectangle "Encoder Feedback\n**to PLC**" as EncoderOut <<Sensor>>
+
+' ==================== DRIVE TRAIN ====================
+package "Drive Train" as DriveTrain #e0f2f1 {
+    rectangle "Rotation Motor\n**0.33 HP**\n**1-Phase AC**\nStall Torque Rated" as Motor <<Rot>>
+
+    rectangle "Gearbox\n**Ratio: 1517:1**\n**Self-Locking**\n(Safety Feature)" as Gearbox <<Mech>>
+
+    rectangle "Torque-Rated\nCoupling\n**Stall Torque\nCapable**" as Coupling <<Mech>>
+}
+
+' ==================== SHAFT ASSEMBLY ====================
+package "Shaft Assembly" as ShaftAssy #fff3e0 {
+
+    rectangle "Main Drive Shaft\n**Torque Transfer**" as Shaft <<Mech>>
+
+    package "Positioning & Support" as Support {
+        rectangle "Shaft Rings/\nCollars\n**Axial Position**" as ShaftCollars <<Mech>>
+
+        rectangle "Pillow Block\nBearings\n**Radial Load**" as Bearings <<Mech>>
+    }
+
+    rectangle "Rotary Encoder\n**Angle Feedback**\n360° Position" as Encoder <<Sensor>>
+}
+
+' ==================== MOUNTING & SAFETY ====================
+package "Mounting System" as MountingSystem #eceff1 {
+    rectangle "Mounting Platform\n**Base Plate**\nSupports Assembly" as Platform <<Struct>>
+
+    rectangle "Fasteners M20\n**Through-Hole Bolts**\nw/ Vibration Damping\nWashers" as Fasteners <<Mech>>
+}
+
+package "Safety System" as SafetySystem #ffebee {
+    rectangle "Failsafe Brake\n**Spring-Applied**\n**Electric-Release**\nWithstands Motor\nStall Torque" as Brake <<Safety>>
+}
+
+' ==================== LOAD ====================
+rectangle "Tabletop Load\n**2.4m × 1.8m**\nCustom Built\nOff-Center Load\nCapable" as Tabletop <<Rot>>
+
+' ==================== CONNECTIONS ====================
+
+' Power flow through drivetrain
+VFD =[#1565c0,thickness=2]==> Motor : **Power**
+Motor =[#00897b,thickness=3]==> Gearbox : **Rotational\nPower**
+Gearbox =[#ef6c00,thickness=3]==> Coupling : **Amplified\nTorque**
+Coupling =[#ef6c00,thickness=3]==> Shaft : **Torque\nTransfer**
+
+' Shaft support and positioning
+ShaftCollars ..[#546e7a,thickness=2].> Shaft : **Axial\nPositioning**
+Bearings ..[#546e7a,thickness=3].> Shaft : **Radial\nLoad Support**
+
+' Mounting structure
+Platform ..[#546e7a,thickness=2].> Bearings : **Mount**
+Platform ..[#546e7a,thickness=2].> Gearbox : **Mount**
+Fasteners ..[#546e7a,thickness=2].> Platform : **Secure\nw/ Damping**
+
+' Safety brake
+BrakeCtrl -[#d32f2f,thickness=2]-> Brake : **Release\nSignal**
+Brake ..[#d32f2f,thickness=3].> Shaft : **Holding\nTorque**
+
+' Final load
+Shaft =[#00897b,thickness=3]==> Tabletop : **Rotate**\n**1 RPM Max**
+
+' Feedback
+Encoder -..[#f57c00,thickness=2]..> EncoderOut : **Position\nData**
+Encoder ..[#f57c00].> Shaft : **Mounted**
+
+' ==================== ANNOTATIONS ====================
+note right of Gearbox
+    **Gearbox Functions:**
+    • Speed Reduction
+    • Torque Amplification
+    • Self-Locking (>50:1)
+    • Overcomes:
+      - Gravitational Torque
+      - Inertial Torque
+      - Friction
+end note
+
+note bottom of Brake
+    **Brake Safety:**
+    • Spring-Applied (Fail-Safe)
+    • Electric-Release
+    • Holds Position on Power Loss
+    • Withstands Motor Stall Torque
+end note
+
+note right of Fasteners
+    **Anti-Vibration:**
+    • M20 Through-Hole Bolts
+    • Vibration Damping Washers
+    • Prevents Loosening
+end note
+
+' ==================== LEGEND ====================
+legend top right
+    **Rotation Subsystem Specifications**
+    ----
+    • **Motor:** 0.33 HP (1-Phase)
+    • **Gearbox Ratio:** 1517:1 (Self-Lock)
+    • **Max Speed:** 1 RPM (360° continuous)
+    • **Tabletop:** 2.4m × 1.8m
+    • **Fasteners:** M20 w/ Vibration Damping
+    • **Brake:** Spring-Applied/Electric-Release
+    ----
+    **Design Considerations:**
+    • Off-center load capability
+    • Self-locking for safety
+    • Failsafe brake system
+    • Vibration-resistant mounting
+endlegend
+
+@enduml

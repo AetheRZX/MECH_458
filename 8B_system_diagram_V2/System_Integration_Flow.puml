@@ -1,0 +1,224 @@
+@startuml System_Integration_Flow
+
+' Professional styling
+skinparam linetype ortho
+skinparam nodesep 80
+skinparam ranksep 100
+skinparam dpi 300
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+hide stereotype
+
+' ==================== COLOR PALETTE ====================
+' Brain (Control): Blue
+skinparam rectangle<<Brain>> {
+    BackgroundColor #e3f2fd
+    BorderColor #1565c0
+    FontColor #0d47a1
+    FontStyle bold
+}
+
+' Body (Mechanical): Orange/Teal
+skinparam rectangle<<Body>> {
+    BackgroundColor #fff3e0
+    BorderColor #ef6c00
+    FontColor #e65100
+    FontStyle bold
+}
+
+' Power: Red
+skinparam rectangle<<Power>> {
+    BackgroundColor #ffebee
+    BorderColor #c62828
+    FontColor #b71c1c
+    FontStyle bold
+}
+
+' Information: Light Blue
+skinparam rectangle<<Info>> {
+    BackgroundColor #e1f5fe
+    BorderColor #0277bd
+    FontColor #01579b
+}
+
+' Energy: Yellow/Orange
+skinparam rectangle<<Energy>> {
+    BackgroundColor #fff8e1
+    BorderColor #f57c00
+    FontColor #e65100
+}
+
+title **Fliptable System Integration: Brain → Body Flow**
+
+' ==================== BRAIN AREA (CONTROL) ====================
+package "Brain Area (Control & Intelligence)" as BrainArea #e3f2fd {
+
+    package "Central Control" as CentralControl {
+        rectangle "**PLC**\nSiemens Controller\n• Logic Processing\n• Safety Monitoring\n• Coordination" as PLC <<Brain>>
+
+        rectangle "**Motion Control**\n• Trajectory Planning\n• Position Control\n• Speed Regulation" as MotionCtrl <<Brain>>
+    }
+
+    package "Interface & Power Control" as InterfaceControl {
+        rectangle "**HMI**\nOperator Interface\n• Commands\n• Monitoring\n• Alarms" as HMI <<Brain>>
+
+        rectangle "**VFD (Lift)**\n3-Phase Drive\n• Frequency Control\n• Current Control" as VFD_Lift <<Brain>>
+
+        rectangle "**VFD (Rotation)**\n1-Phase Drive\n• Speed Control\n• Torque Control" as VFD_Rot <<Brain>>
+
+        rectangle "**Brake Control**\nCurrent Control\n• Release Signal\n• Hold Signal" as BrakeCtrl <<Brain>>
+    }
+
+    HMI <-[#0277bd,thickness=2]-> PLC : **Commands**
+    PLC <-[#0277bd,thickness=2]-> MotionCtrl : **Setpoints**
+    MotionCtrl -[#1565c0,thickness=2]-> VFD_Lift : **Signals**
+    MotionCtrl -[#1565c0,thickness=2]-> VFD_Rot : **Signals**
+    PLC -[#1565c0,thickness=2]-> BrakeCtrl : **Signals**
+}
+
+' ==================== BRAIN-BODY INTERFACE ====================
+rectangle "**Information Flow ↓**\nControl Signals\nSetpoints\nCommands" as InfoFlow <<Info>>
+rectangle "**Energy Flow ↓**\n3φ Power\n1φ Power\nCurrent" as EnergyFlow <<Energy>>
+rectangle "**Feedback Flow ↑**\nPosition\nStatus\nSafety Interlocks" as FeedbackFlow <<Info>>
+
+BrainArea -[#0277bd,thickness=2]-> InfoFlow
+BrainArea =[#f57c00,thickness=3]==> EnergyFlow
+
+' ==================== BODY AREA (MECHANICAL) ====================
+package "Body Area (Mechanical Actuation)" as BodyArea #fff3e0 {
+
+    package "Lifting Actuation" as LiftingBody {
+        rectangle "**Lift Motor**\n3-Phase AC\n• Electrical → Mechanical" as LiftMotor <<Body>>
+
+        rectangle "**Gearbox (Lift)**\n• Torque Amplification\n• Speed Reduction" as LiftGearbox <<Body>>
+
+        rectangle "**Lead Screws**\nDual Configuration\n• Rotary → Linear\n• Synchronized Motion" as LeadScrews <<Body>>
+
+        LiftMotor =[#7b1fa2,thickness=3]==> LiftGearbox : **Rotational\nPower**
+        LiftGearbox =[#ef6c00,thickness=3]==> LeadScrews : **Amplified\nTorque**
+    }
+
+    rectangle "**Platform**\nMoving Shelf\n• Vertical Motion\n• Load Carrier" as Platform <<Body>>
+
+    package "Rotation Actuation" as RotationBody {
+        rectangle "**Rotation Motor**\n1-Phase AC\n0.33 HP\n• Electrical → Mechanical" as RotMotor <<Body>>
+
+        rectangle "**Gearbox (Rot)**\n1517:1 Ratio\n• Torque Amplification\n• Self-Locking" as RotGearbox <<Body>>
+
+        rectangle "**Shaft & Bearings**\n• Torque Transfer\n• Load Support" as Shaft <<Body>>
+
+        rectangle "**Tabletop**\n2.4m × 1.8m\n• Final Load\n• Up/Down Motion" as Tabletop <<Body>>
+
+        RotMotor =[#00897b,thickness=3]==> RotGearbox : **Rotational\nPower**
+        RotGearbox =[#ef6c00,thickness=3]==> Shaft : **Amplified\nTorque**
+        Shaft =[#00897b,thickness=3]==> Tabletop : **Rotation**
+    }
+
+    package "Safety Actuation" as SafetyBody {
+        rectangle "**Brake**\nSpring-Applied\n• Holding Force\n• Failsafe" as Brake <<Body>>
+    }
+
+    LeadScrews =[#ef6c00,thickness=3]==> Platform : **Linear\nMotion**
+    Platform =[#546e7a,thickness=3]==> RotMotor : **Supports**
+}
+
+' ==================== CONNECTIONS ====================
+
+' Energy flow from brain to body
+VFD_Lift =[#7b1fa2,thickness=3]==> LiftMotor : **3φ Power**
+VFD_Rot =[#00897b,thickness=3]==> RotMotor : **1φ Power**
+BrakeCtrl -[#d32f2f,thickness=3]-> Brake : **Current**
+
+InfoFlow -[#0277bd,thickness=2]-> BodyArea
+EnergyFlow =[#f57c00,thickness=3]==> BodyArea
+
+' Feedback flow from body to brain
+Tabletop -..[#f57c00,thickness=2]..> FeedbackFlow : **Encoders**\n**Position**
+LeadScrews -..[#f57c00,thickness=2]..> FeedbackFlow : **Encoders**\n**Position**
+Platform -..[#d32f2f,thickness=2]..> FeedbackFlow : **Limit\nSwitches**
+
+FeedbackFlow -..[#0277bd,thickness=2]..> PLC
+FeedbackFlow -..[#0277bd,thickness=2]..> MotionCtrl
+
+' ==================== FLOW ANNOTATIONS ====================
+note right of InfoFlow
+    **Information Flow (Brain → Body)**
+    • Control signals
+    • Speed setpoints
+    • Position commands
+    • Brake release signals
+
+    **Digital/Analog Signals**
+end note
+
+note right of EnergyFlow
+    **Energy Flow (Brain → Body)**
+    • 3φ 240V AC (Lift Motor)
+    • 1φ 240V AC (Rotation Motor)
+    • DC Current (Brake Release)
+
+    **High Power Electrical**
+end note
+
+note right of FeedbackFlow
+    **Feedback Flow (Body → Brain)**
+    • Position encoders
+    • Limit switch status
+    • Motor status
+    • Safety interlocks
+
+    **Sensor Data & Status**
+end note
+
+' ==================== SYSTEM SUMMARY ====================
+note bottom of BrainArea
+    **Brain Area Functions:**
+    • **Intelligence:** PLC processing, logic, safety
+    • **Interface:** HMI operator control
+    • **Power Control:** VFDs and brake relay
+    • **Communication:** EtherNet/IP, EtherCAT
+    ----
+    **Outputs:** Control signals + Electrical power
+    **Inputs:** Sensor feedback + Status
+end note
+
+note bottom of BodyArea
+    **Body Area Functions:**
+    • **Lifting:** Motor → Gearbox → Lead Screws
+    • **Rotation:** Motor → Gearbox (1517:1) → Shaft
+    • **Safety:** Spring-applied brake
+    • **Structure:** Platform, bearings, tabletop
+    ----
+    **Inputs:** Electrical power + Control signals
+    **Outputs:** Mechanical motion + Feedback
+end note
+
+' ==================== LEGEND ====================
+legend right
+    **System Integration Architecture**
+    ----
+    **Brain Area (Control):**
+    • PLC: Central controller
+    • VFDs: Power control
+    • HMI: Operator interface
+    • Motion control: Coordination
+    ----
+    **Body Area (Mechanical):**
+    • Motors: Energy conversion
+    • Gearboxes: Torque amplification
+    • Lead screws: Linear motion
+    • Shaft/Tabletop: Final actuation
+    • Brake: Safety holding
+    ----
+    **Flow Types:**
+    <color:#0277bd>━━━</color> Information (signals, commands)
+    <color:#f57c00>▬▬▬</color> Energy (power, current)
+    <color:#f57c00>┄┄┄</color> Feedback (sensors, status)
+    ----
+    **Key Conversions:**
+    • Electrical → Rotational (Motors)
+    • Rotational → Amplified (Gearboxes)
+    • Rotational → Linear (Lead Screws)
+endlegend
+
+@enduml

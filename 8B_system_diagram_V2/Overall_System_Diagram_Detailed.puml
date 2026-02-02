@@ -1,0 +1,251 @@
+@startuml Overall_System_Diagram_Detailed
+
+' Enhanced styling for professional appearance
+skinparam linetype ortho
+skinparam nodesep 70
+skinparam ranksep 70
+skinparam dpi 300
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+hide stereotype
+
+' ==================== COLOR PALETTE ====================
+' Power: Red tones
+skinparam rectangle<<Power>> {
+    BackgroundColor #ffebee
+    BorderColor #c62828
+    FontColor #b71c1c
+    FontStyle bold
+}
+
+' Control: Blue tones
+skinparam rectangle<<Control>> {
+    BackgroundColor #e3f2fd
+    BorderColor #1565c0
+    FontColor #0d47a1
+    FontStyle bold
+}
+
+' Communication: Light Blue
+skinparam rectangle<<Comm>> {
+    BackgroundColor #e1f5fe
+    BorderColor #0277bd
+    FontColor #01579b
+}
+
+' Lifting: Purple tones
+skinparam rectangle<<Lift>> {
+    BackgroundColor #f3e5f5
+    BorderColor #7b1fa2
+    FontColor #4a148c
+    FontStyle bold
+}
+
+' Rotation: Teal tones
+skinparam rectangle<<Rot>> {
+    BackgroundColor #e0f2f1
+    BorderColor #00897b
+    FontColor #00695c
+    FontStyle bold
+}
+
+' Mechanical: Orange tones
+skinparam rectangle<<Mech>> {
+    BackgroundColor #fff3e0
+    BorderColor #ef6c00
+    FontColor #e65100
+}
+
+' Structure: Grey tones
+skinparam rectangle<<Struct>> {
+    BackgroundColor #eceff1
+    BorderColor #546e7a
+    FontColor #37474f
+    BorderStyle dashed
+}
+
+' Sensor: Amber tones
+skinparam rectangle<<Sensor>> {
+    BackgroundColor #fff8e1
+    BorderColor #f57c00
+    FontColor #e65100
+}
+
+' Safety: Red/Warning
+skinparam rectangle<<Safety>> {
+    BackgroundColor #ffebee
+    BorderColor #d32f2f
+    FontColor #b71c1c
+    BorderThickness 2
+}
+
+' ==================== POWER DISTRIBUTION ====================
+package "Power Distribution System" as PowerSystem #fafafa {
+    rectangle "Main Supply\n**3φ 240V AC**" as MainPower <<Power>>
+    rectangle "Main Breaker" as Breaker <<Power>>
+    rectangle "E-Stop Circuit\n(Emergency)" as EStop <<Safety>>
+    rectangle "Power Cabling\n& Distribution" as Cabling <<Power>>
+
+    MainPower -[#c62828,thickness=3]-> Breaker
+    Breaker -[#c62828,thickness=3]-> EStop
+    EStop -[#c62828,thickness=3]-> Cabling
+}
+
+' ==================== CONTROL CABINET ====================
+package "Control Cabinet (Brain Area)" as ControlCabinet #e8f5e9 {
+
+    package "Main Controller" as MainController {
+        rectangle "Siemens PLC\n**Main Controller**" as PLC <<Control>>
+        rectangle "Motion Control\nModule" as MotionModule <<Control>>
+        rectangle "Safety Logic\nModule" as SafetyLogic <<Safety>>
+
+        PLC -[hidden]d- MotionModule
+        MotionModule -[hidden]d- SafetyLogic
+    }
+
+    rectangle "HMI Panel\n**Touchscreen Display**" as HMI <<Control>> {
+        rectangle "- Angle Display\n- Height Display\n- Status/Alarms\n- Manual Jog\n- Recipe Selection" as HMIFeatures
+    }
+
+    package "Communication Network" as CommNetwork {
+        rectangle "EtherNet/IP\n**Control Bus**" as EtherNetIP <<Comm>>
+        rectangle "EtherCAT\n**Motion Network**" as EtherCAT <<Comm>>
+    }
+
+    package "Motor Drives" as Drives {
+        rectangle "Lift Drive\n**VFD (3-Phase)**" as VFD_Lift <<Control>>
+        rectangle "Rotation Drive\n**Inverter (1-Phase)**" as VFD_Rot <<Control>>
+        rectangle "Brake Relay\n**Spring-Applied**" as BrakeRelay <<Control>>
+    }
+
+    ' Internal control connections
+    HMI <-[#1565c0]-> EtherNetIP
+    EtherNetIP <-[#1565c0]-> PLC
+    PLC <-[#1565c0]-> MotionModule
+    PLC <-[#1565c0]-> SafetyLogic
+    MotionModule <-[#0277bd]-> EtherCAT
+
+    PLC -[#1565c0]-> VFD_Lift
+    PLC -[#1565c0]-> VFD_Rot
+    PLC -[#1565c0]-> BrakeRelay
+}
+
+' Power to control cabinet
+Cabling =[#c62828,thickness=3]=> PLC
+Cabling =[#c62828,thickness=3]=> VFD_Lift
+Cabling =[#c62828,thickness=3]=> VFD_Rot
+
+' ==================== LIFTING SUBSYSTEM ====================
+package "Lifting Subsystem (Body Area)" as LiftingSystem #fff3e0 {
+
+    package "Actuation System" as LiftActuation {
+        rectangle "Lift Motor\n**3-Phase AC**" as LiftMotor <<Lift>>
+        rectangle "Lead Screw #1\n**Corner A**" as LeadScrew1 <<Mech>>
+        rectangle "Lead Screw #2\n**Corner B**" as LeadScrew2 <<Mech>>
+        rectangle "Synchronization\nMechanism" as SyncMech <<Mech>>
+
+        LiftMotor =[#7b1fa2,thickness=2]=> SyncMech
+        SyncMech =[#ef6c00]=> LeadScrew1
+        SyncMech =[#ef6c00]=> LeadScrew2
+    }
+
+    package "Structural Frame" as StructFrame {
+        rectangle "Linear Guide Rails\n**w/ Misalignment\nCompensation**" as GuideRails <<Struct>>
+        rectangle "Support Bracing\n**Min-CD Design**" as Bracing <<Struct>>
+        rectangle "Moving Platform\n**Equipment Shelf**" as MovingPlatform <<Struct>>
+    }
+
+    package "Safety Systems" as LiftSafety {
+        rectangle "Upper Limit\nSwitch" as UpperLimit <<Sensor>>
+        rectangle "Lower Limit\nSwitch" as LowerLimit <<Sensor>>
+        rectangle "Position Encoder\n**Feedback**" as LiftEncoder <<Sensor>>
+    }
+
+    ' Mechanical connections
+    LeadScrew1 =[#ef6c00]=> MovingPlatform
+    LeadScrew2 =[#ef6c00]=> MovingPlatform
+    GuideRails ..[#546e7a,thickness=1].> MovingPlatform : Guide
+    Bracing ..[#546e7a,thickness=1].> GuideRails : Support
+
+    ' Sensor connections
+    UpperLimit -..[#f57c00]-> PLC : Safety
+    LowerLimit -..[#f57c00]-> PLC : Safety
+    LiftEncoder -..[#f57c00]-> MotionModule : Position
+}
+
+' Drive to motor connection
+VFD_Lift =[#7b1fa2,thickness=2]==> LiftMotor
+
+' ==================== ROTATION SUBSYSTEM ====================
+package "Rotation Subsystem (On Platform)" as RotationSystem #e0f2f1 {
+
+    package "Drive Train" as RotDrive {
+        rectangle "Rotation Motor\n**0.33 HP\n1-Phase**" as RotMotor <<Rot>>
+        rectangle "Gearbox\n**Ratio: 1517:1**\n(Self-Locking)" as Gearbox <<Mech>>
+        rectangle "Coupling\n**Torque Rated**" as Coupling <<Mech>>
+    }
+
+    package "Shaft Assembly" as ShaftAssembly {
+        rectangle "Main Shaft\n**Drive Shaft**" as MainShaft <<Mech>>
+        rectangle "Shaft Rings/Collars\n**Positioning**" as ShaftCollars <<Mech>>
+        rectangle "Pillow Block\nBearings" as Bearings <<Mech>>
+        rectangle "Mounting Platform\n**Base Plate**" as Platform <<Struct>>
+    }
+
+    package "Safety & Mounting" as RotSafety {
+        rectangle "Failsafe Brake\n**Spring-Applied\nElectric-Release**" as Brake <<Safety>>
+        rectangle "Fasteners M20\n**w/ Vibration\nDamping Washers**" as Fasteners <<Mech>>
+    }
+
+    rectangle "Tabletop Load\n**2.4m × 1.8m**\n(Custom Built)" as Tabletop <<Rot>>
+
+    rectangle "Rotary Encoder\n**Angle Feedback**" as RotEncoder <<Sensor>>
+
+    ' Drivetrain flow
+    RotMotor =[#00897b,thickness=2]=> Gearbox
+    Gearbox =[#ef6c00]=> Coupling
+    Coupling =[#ef6c00]=> MainShaft
+
+    ' Shaft support
+    ShaftCollars ..[#546e7a].> MainShaft : Position
+    Bearings ..[#546e7a,thickness=2].> MainShaft : Support
+    Platform ..[#546e7a].> Bearings : Mount
+    Fasteners ..[#546e7a].> Platform : Secure
+
+    ' Brake and load
+    Brake ..[#d32f2f,thickness=2].> MainShaft : Hold
+    MainShaft =[#00897b,thickness=2]=> Tabletop : Rotate
+
+    ' Feedback
+    RotEncoder -..[#f57c00]-> MotionModule : Angle
+}
+
+' Drive to motor connection
+VFD_Rot =[#00897b,thickness=2]==> RotMotor
+BrakeRelay -[#d32f2f]-> Brake : Release
+
+' Platform carries rotation system
+MovingPlatform =[#546e7a,thickness=2]==> Platform : **Vertical\nLoad Path**
+
+' ==================== LEGEND ====================
+legend right
+    **Connection Types**
+    ----
+    <color:#c62828>▬▬▬</color> Power Flow (3φ AC)
+    <color:#1565c0>━━━</color> Control Signals
+    <color:#0277bd>━━━</color> Communication Bus
+    <color:#ef6c00>▬▬▬</color> Mechanical Power
+    <color:#546e7a>┄┄┄</color> Structural Support
+    <color:#f57c00>━ ━</color> Sensor Feedback
+    <color:#d32f2f>━━━</color> Safety Interlock
+    ----
+    **System Specifications**
+    • Max Rotation: 1 RPM (360°)
+    • Motor: 0.33 HP (1-Phase)
+    • Gearbox: 1517:1 (Self-Lock)
+    • Tabletop: 2.4m × 1.8m
+    • Power: 3φ 240V AC
+    • Fasteners: M20 Bolts
+endlegend
+
+@enduml

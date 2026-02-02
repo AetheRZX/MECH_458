@@ -1,0 +1,192 @@
+@startuml Lifting_Subsystem_Detailed
+
+' Professional styling
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+skinparam dpi 300
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+hide stereotype
+
+' ==================== COLOR PALETTE ====================
+' Control Input: Blue
+skinparam rectangle<<Input>> {
+    BackgroundColor #e3f2fd
+    BorderColor #1565c0
+    FontColor #0d47a1
+    FontStyle bold
+}
+
+' Lifting: Purple
+skinparam rectangle<<Lift>> {
+    BackgroundColor #f3e5f5
+    BorderColor #7b1fa2
+    FontColor #4a148c
+    FontStyle bold
+}
+
+' Mechanical: Orange
+skinparam rectangle<<Mech>> {
+    BackgroundColor #fff3e0
+    BorderColor #ef6c00
+    FontColor #e65100
+}
+
+' Structure: Grey
+skinparam rectangle<<Struct>> {
+    BackgroundColor #eceff1
+    BorderColor #546e7a
+    FontColor #37474f
+    BorderStyle dashed
+}
+
+' Sensor: Amber
+skinparam rectangle<<Sensor>> {
+    BackgroundColor #fff8e1
+    BorderColor #f57c00
+    FontColor #e65100
+}
+
+' Safety: Red
+skinparam rectangle<<Safety>> {
+    BackgroundColor #ffebee
+    BorderColor #d32f2f
+    FontColor #b71c1c
+}
+
+' ==================== CONTROL INPUT ====================
+rectangle "VFD Output\n**3-Phase AC**" as VFD <<Input>>
+
+rectangle "Position Feedback\n**to PLC**" as FeedbackOut <<Sensor>>
+
+rectangle "Safety Signals\n**to PLC**" as SafetyOut <<Safety>>
+
+' ==================== ACTUATION SYSTEM ====================
+package "Actuation System" as ActuationSystem #f3e5f5 {
+
+    rectangle "Lift Motor\n**3-Phase AC**\nVariable Speed" as Motor <<Lift>>
+
+    rectangle "Synchronization\nMechanism\n**Ensures Parallel\nMotion**" as SyncMech <<Mech>>
+
+    package "Dual Lead Screw Configuration" as DualScrews {
+        rectangle "Lead Screw #1\n**Corner A**\nRotary → Linear" as LeadScrew1 <<Mech>>
+
+        rectangle "Lead Screw #2\n**Corner B**\nRotary → Linear" as LeadScrew2 <<Mech>>
+    }
+}
+
+' ==================== STRUCTURAL FRAME ====================
+package "Structural Frame" as StructFrame #eceff1 {
+
+    package "Guide System" as GuideSystem {
+        rectangle "Linear Guide\nRails\n**Misalignment\nCompensation**\n**Min-CD Design**" as GuideRails <<Struct>>
+
+        rectangle "Support Bracing\n**Structural\nIntegrity**" as Bracing <<Struct>>
+    }
+
+    rectangle "Moving Platform\n**Equipment Shelf**\nCarries Rotation\nSubsystem" as Platform <<Struct>>
+}
+
+' ==================== SAFETY SYSTEM ====================
+package "Safety & Feedback System" as SafetySystem #ffebee {
+
+    package "Limit Switches" as LimitSwitches {
+        rectangle "Upper Limit\nSwitch\n**Prevent\nOver-Travel**" as UpperLimit <<Safety>>
+
+        rectangle "Lower Limit\nSwitch\n**Prevent\nOver-Travel**" as LowerLimit <<Safety>>
+    }
+
+    rectangle "Position Encoder\n**Height Feedback**\nReal-time Position" as Encoder <<Sensor>>
+}
+
+' ==================== PAYLOAD ====================
+rectangle "Rotation Subsystem\n**Payload**\n(Motor, Gearbox,\nBrake, Tabletop)" as Payload <<Lift>>
+
+' ==================== POWER & CONTROL FLOW ====================
+
+' Motor power
+VFD =[#7b1fa2,thickness=3]==> Motor : **3-Phase\nPower**
+
+' Mechanical power distribution
+Motor =[#7b1fa2,thickness=3]==> SyncMech : **Rotational\nPower**
+SyncMech =[#ef6c00,thickness=2]==> LeadScrew1 : **Synchronized\nRotation**
+SyncMech =[#ef6c00,thickness=2]==> LeadScrew2 : **Synchronized\nRotation**
+
+' Linear actuation
+LeadScrew1 =[#ef6c00,thickness=3]==> Platform : **Linear\nMotion**\n(Corner A)
+LeadScrew2 =[#ef6c00,thickness=3]==> Platform : **Linear\nMotion**\n(Corner B)
+
+' Structural support
+GuideRails ..[#546e7a,thickness=3].> Platform : **Guidance**\n**Prevent Binding**
+Bracing ..[#546e7a,thickness=2].> GuideRails : **Structural\nSupport**
+
+' Load path
+Platform =[#7b1fa2,thickness=3]==> Payload : **Vertical\nLoad Path**
+
+' Limit switches
+UpperLimit ..[#d32f2f,thickness=2].> Platform : **Detect\nUpper Limit**
+LowerLimit ..[#d32f2f,thickness=2].> Platform : **Detect\nLower Limit**
+
+' Feedback signals
+UpperLimit -..[#f57c00,thickness=2]..> SafetyOut : **Stop\nSignal**
+LowerLimit -..[#f57c00,thickness=2]..> SafetyOut : **Stop\nSignal**
+Encoder -..[#f57c00,thickness=2]..> FeedbackOut : **Position\nData**
+
+' Encoder mounting
+Encoder ..[#f57c00].> LeadScrew1 : **Mounted**
+
+' ==================== ANNOTATIONS ====================
+note right of SyncMech
+    **Synchronization Functions:**
+    • Distributes power to both screws
+    • Ensures parallel motion
+    • Prevents platform tilting
+    • Maintains load distribution
+end note
+
+note bottom of GuideRails
+    **Guide Rail Features:**
+    • Misalignment compensation
+    • Prevents lead screw binding
+    • Min-CD design for reliability
+    • Low-friction guidance
+end note
+
+note right of LimitSwitches
+    **Safety Interlocks:**
+    • Prevent over-travel at stroke limits
+    • Hard-wired to PLC safety logic
+    • Immediately halt motion
+    • Redundant safety system
+end note
+
+note top of DualScrews
+    **Dual Actuator Configuration:**
+    • Two synchronized lead screws
+    • Located at opposite corners
+    • Ensures parallel lift motion
+    • Distributes load evenly
+    • Converts rotary to linear motion
+end note
+
+' ==================== LEGEND ====================
+legend bottom right
+    **Lifting Subsystem Specifications**
+    ----
+    • **Motor:** 3-Phase AC (Variable Speed)
+    • **Actuators:** Dual Lead Screws
+    • **Configuration:** Two corners for stability
+    • **Guidance:** Linear rails w/ compensation
+    • **Design:** Min-CD (prevent binding)
+    • **Safety:** Upper/Lower limit switches
+    ----
+    **Design Features:**
+    • Synchronized parallel motion
+    • Misalignment compensation
+    • Over-travel protection
+    • Real-time position feedback
+    • Load distribution across two points
+endlegend
+
+@enduml

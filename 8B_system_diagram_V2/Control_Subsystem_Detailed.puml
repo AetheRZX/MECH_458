@@ -1,0 +1,263 @@
+@startuml Control_Subsystem_Detailed
+
+' Professional styling
+skinparam linetype ortho
+skinparam nodesep 60
+skinparam ranksep 70
+skinparam dpi 300
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+hide stereotype
+
+' ==================== COLOR PALETTE ====================
+' Power: Red
+skinparam rectangle<<Power>> {
+    BackgroundColor #ffebee
+    BorderColor #c62828
+    FontColor #b71c1c
+    FontStyle bold
+}
+
+' Control: Blue
+skinparam rectangle<<Control>> {
+    BackgroundColor #e3f2fd
+    BorderColor #1565c0
+    FontColor #0d47a1
+    FontStyle bold
+}
+
+' Communication: Light Blue
+skinparam rectangle<<Comm>> {
+    BackgroundColor #e1f5fe
+    BorderColor #0277bd
+    FontColor #01579b
+}
+
+' HMI: Green
+skinparam rectangle<<HMI>> {
+    BackgroundColor #e8f5e9
+    BorderColor #2e7d32
+    FontColor #1b5e20
+    FontStyle bold
+}
+
+' Safety: Red/Warning
+skinparam rectangle<<Safety>> {
+    BackgroundColor #ffebee
+    BorderColor #d32f2f
+    FontColor #b71c1c
+    BorderThickness 2
+}
+
+' Sensor: Amber
+skinparam rectangle<<Sensor>> {
+    BackgroundColor #fff8e1
+    BorderColor #f57c00
+    FontColor #e65100
+}
+
+' Drive: Purple
+skinparam rectangle<<Drive>> {
+    BackgroundColor #f3e5f5
+    BorderColor #7b1fa2
+    FontColor #4a148c
+}
+
+' Output: Teal
+skinparam rectangle<<Output>> {
+    BackgroundColor #e0f2f1
+    BorderColor #00897b
+    FontColor #00695c
+}
+
+' ==================== POWER INPUT ====================
+package "Power Input Subsystem" as PowerInput #ffebee {
+    rectangle "3φ 240V AC\nMain Supply\n**Electrical Input**" as MainSupply <<Power>>
+
+    rectangle "Main Breaker\n**Overcurrent\nProtection**" as MainBreaker <<Power>>
+
+    rectangle "E-Stop Circuit\n**Emergency\nDisconnect**" as EStop <<Safety>>
+
+    rectangle "Power Cabling\n& Distribution\n**Wiring Harness**" as Cabling <<Power>>
+
+    MainSupply -[#c62828,thickness=3]-> MainBreaker
+    MainBreaker -[#c62828,thickness=3]-> EStop
+    EStop -[#c62828,thickness=3]-> Cabling
+}
+
+' ==================== MAIN PLC CONTROLLER ====================
+package "Main PLC Controller Subsystem" as PLCSubsystem #e3f2fd {
+
+    rectangle "Siemens PLC\n**Main Controller**\nCentral Processing\nSafety Monitoring" as PLC <<Control>>
+
+    rectangle "Motion Control\nModule\n**Coordinated Motion**\nTrajectory Planning" as MotionModule <<Control>>
+
+    rectangle "Safety Logic\nModule\n**Safety Interlocks**\nE-Stop Monitoring" as SafetyLogic <<Safety>>
+
+    PLC <-[#1565c0,thickness=2]-> MotionModule : **Internal\nBus**
+    PLC <-[#1565c0,thickness=2]-> SafetyLogic : **Safety\nBus**
+}
+
+' Power to PLC
+Cabling =[#c62828,thickness=2]==> PLC : **24V DC\nControl Power**
+
+' ==================== HMI PANEL ====================
+package "HMI Panel Subsystem" as HMISubsystem #e8f5e9 {
+
+    rectangle "Touchscreen\nDisplay\n**Operator Interface**" as HMI <<HMI>>
+
+    package "Display Functions" as HMIFunctions {
+        rectangle "• Angle Display\n• Height Display\n• Status/Alarms\n• Manual Jog\n• Recipe Selection" as Functions
+    }
+}
+
+HMI -[hidden]d- Functions
+
+' ==================== COMMUNICATION BUS ====================
+package "Communication Bus Subsystem" as CommSubsystem #e1f5fe {
+
+    rectangle "EtherNet/IP\n**Control Bus**\nHigh-Speed Data\nExchange" as EtherNetIP <<Comm>>
+
+    rectangle "EtherCAT\n**Motion Network**\nReal-Time Motion\nControl" as EtherCAT <<Comm>>
+}
+
+' Communication connections
+HMI <-[#2e7d32,thickness=2]-> EtherNetIP : **HMI\nData**
+EtherNetIP <-[#0277bd,thickness=2]-> PLC : **Control\nData**
+MotionModule <-[#0277bd,thickness=2]-> EtherCAT : **Motion\nCommands**
+
+' ==================== MOTOR DRIVES ====================
+package "Motor Drive Subsystem" as DriveSubsystem #f3e5f5 {
+
+    rectangle "VFD\n**Lift Drive**\n3-Phase AC\nVariable Frequency" as VFD_Lift <<Drive>>
+
+    rectangle "Inverter\n**Rotation Drive**\n1-Phase AC\nSpeed Control" as VFD_Rot <<Drive>>
+
+    rectangle "Brake Relay\n**Spring-Applied**\nElectric Release\nControl" as BrakeRelay <<Drive>>
+}
+
+' Power to drives
+Cabling =[#c62828,thickness=3]==> VFD_Lift : **3φ 240V**
+Cabling =[#c62828,thickness=3]==> VFD_Rot : **1φ 240V**
+Cabling =[#c62828,thickness=2]==> BrakeRelay : **24V DC**
+
+' Control to drives
+PLC -[#1565c0,thickness=2]-> VFD_Lift : **Speed\nCommand**
+PLC -[#1565c0,thickness=2]-> VFD_Rot : **Speed\nCommand**
+PLC -[#1565c0,thickness=2]-> BrakeRelay : **Release\nSignal**
+
+' ==================== FEEDBACK SENSORS ====================
+package "Feedback Sensor Subsystem" as FeedbackSubsystem #fff8e1 {
+
+    package "Encoders" as Encoders {
+        rectangle "Lift Position\nEncoder\n**Height Feedback**" as LiftEncoder <<Sensor>>
+
+        rectangle "Rotation Angle\nEncoder\n**Angle Feedback**" as RotEncoder <<Sensor>>
+    }
+
+    rectangle "Feedback Processing\n**Position Control**" as FeedbackProc <<Sensor>>
+
+    LiftEncoder -..[#f57c00,thickness=2]..> FeedbackProc
+    RotEncoder -..[#f57c00,thickness=2]..> FeedbackProc
+}
+
+FeedbackProc -..[#f57c00,thickness=2]..> MotionModule : **Real-Time\nPosition**
+
+' ==================== SAFETY SENSORS ====================
+package "Safety Sensor Subsystem" as SafetySensors #ffebee {
+
+    rectangle "Upper Limit\nSwitch\n**Lift Over-Travel**" as UpperLimit <<Safety>>
+
+    rectangle "Lower Limit\nSwitch\n**Lift Over-Travel**" as LowerLimit <<Safety>>
+
+    rectangle "Safety Sensor\nProcessing\n**Basic Monitoring**" as SafetyProc <<Safety>>
+
+    UpperLimit -..[#d32f2f,thickness=2]..> SafetyProc
+    LowerLimit -..[#d32f2f,thickness=2]..> SafetyProc
+}
+
+SafetyProc -..[#d32f2f,thickness=2]..> SafetyLogic : **Safety\nInterlocks**
+EStop -..[#d32f2f,thickness=2]..> SafetyLogic : **E-Stop\nStatus**
+
+' ==================== OUTPUT TO MOTORS ====================
+rectangle "Lift Motor\n**3-Phase AC**" as LiftMotor <<Output>>
+rectangle "Rotation Motor\n**1-Phase AC**" as RotMotor <<Output>>
+rectangle "Failsafe Brake\n**Spring-Applied**" as Brake <<Output>>
+
+VFD_Lift =[#7b1fa2,thickness=3]==> LiftMotor : **Variable\nFrequency**
+VFD_Rot =[#00897b,thickness=3]==> RotMotor : **Variable\nSpeed**
+BrakeRelay -[#d32f2f,thickness=2]-> Brake : **Release\nSignal**
+
+' ==================== ANNOTATIONS ====================
+note right of PLCSubsystem
+    **Main PLC Functions:**
+    • Central processing unit
+    • Motion coordination
+    • Safety monitoring
+    • Logic execution
+    • Data logging
+end note
+
+note right of CommSubsystem
+    **Communication Hierarchy:**
+    • EtherNet/IP: Control & HMI
+    • EtherCAT: Real-time motion
+    • High-speed data exchange
+    • Deterministic timing
+end note
+
+note bottom of DriveSubsystem
+    **Motor Drive Types:**
+    • VFD: 3-Phase AC (Lift)
+    • Inverter: 1-Phase AC (Rotation)
+    • Brake Relay: DC Control
+    • Variable frequency control
+end note
+
+note right of SafetySensors
+    **Safety Features:**
+    • Basic safety sensor installation
+    • Complete safety system out of scope
+    • Limit switch monitoring
+    • E-Stop integration
+end note
+
+' ==================== LEGEND ====================
+legend bottom right
+    **Control Subsystem Architecture**
+    ----
+    **Power Distribution:**
+    • Main: 3φ 240V AC
+    • Control: 24V DC
+    • E-Stop: Emergency disconnect
+    ----
+    **Main Controller:**
+    • Siemens PLC
+    • Motion Control Module
+    • Safety Logic Module
+    ----
+    **HMI Panel:**
+    • Touchscreen display
+    • Angle/height display
+    • Status & alarms
+    • Manual jog control
+    • Recipe selection
+    ----
+    **Communication:**
+    • EtherNet/IP (Control Bus)
+    • EtherCAT (Motion Network)
+    ----
+    **Motor Drives:**
+    • VFD for AC motor (Lift)
+    • Inverter for AC motor (Rotation)
+    • Brake relay control
+    ----
+    **Feedback Sensors:**
+    • Encoders (position feedback)
+    ----
+    **Safety Sensors:**
+    • Limit switches
+    • E-Stop circuit
+endlegend
+
+@enduml
