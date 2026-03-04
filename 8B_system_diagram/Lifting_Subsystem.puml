@@ -1,0 +1,49 @@
+@startuml Lifting_Subsystem
+
+skinparam linetype ortho
+skinparam nodesep 50
+skinparam ranksep 50
+
+' Styling
+skinparam rectangle<<Lift>> {
+    BackgroundColor #f3e5f5
+    BorderColor #4a148c
+    FontColor #4a148c
+}
+skinparam rectangle<<Struct>> {
+    BackgroundColor #eceff1
+    BorderColor #455a64
+    FontColor #37474f
+    BorderStyle dashed
+}
+skinparam rectangle<<Input>> {
+    BackgroundColor #e1f5fe
+    BorderColor #01579b
+    FontColor #01579b
+}
+
+rectangle "VFD Output\n(3-Phase)" as Input <<Input>>
+
+rectangle "Actuation Group" {
+    rectangle "Lift Motor\n(3-Phase)" as Motor <<Lift>>
+    rectangle "Jack Screw Assembly" as Jack <<Struct>>
+}
+
+rectangle "Structural Frame" {
+    rectangle "Linear Guides" as Guides <<Struct>>
+    rectangle "Support Bracing" as Bracing <<Struct>>
+    rectangle "Equipment Shelf" as Shelf <<Struct>>
+}
+
+rectangle "Rotation Subsystem\n(Payload)" as Payload <<Lift>>
+
+Input ==> Motor
+Motor ==> Jack
+Jack ==> Shelf
+
+Guides ..> Shelf : Guide
+Bracing ..> Guides : Support
+
+Shelf ==> Payload : Carries
+
+@enduml

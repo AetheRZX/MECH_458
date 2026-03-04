@@ -1,0 +1,26 @@
+graph TD
+    linkStyle default interpolate stepAfter stroke:#555,stroke-width:2px;
+
+    classDef logic fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
+    classDef action fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px,color:#1b5e20;
+    classDef err fill:#ffebee,stroke:#b71c1c,stroke-width:2px,color:#b71c1c;
+
+    Start((Start)):::logic
+    Safety{"Safety Check?"}:::logic
+    
+    Start --> Safety
+    Safety -- "NO" --> Halt[HALT / ERROR]:::err
+    Safety -- "YES" --> Ready[System Ready]:::logic
+    
+    Ready --> In[/HMI Input/]:::logic
+    In --> Calc[Calculate]:::logic
+    
+    Calc --> Drive[VFD Command]:::action
+    Drive --> Move[Motion]:::action
+    
+    Move --> Check{"Target Reached?"}:::logic
+    Check -- "NO" --> Feedback[/Read Encoders/]:::logic
+    Feedback --> Calc
+    
+    Check -- "YES" --> Brake[Engage Brakes]:::action
+    Brake --> Done((Done)):::logic

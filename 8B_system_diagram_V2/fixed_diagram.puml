@@ -1,0 +1,272 @@
+@startuml Overall_System_Diagram_Detailed
+
+' Enhanced styling for professional appearance
+skinparam linetype polyline
+skinparam nodesep 60
+skinparam ranksep 60
+skinparam dpi 300
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+hide stereotype
+skinparam ArrowThickness 2
+
+' ==================== COLOR PALETTE ====================
+' Power: Red tones - Enhanced contrast
+skinparam rectangle<<Power>> {
+    BackgroundColor #ffcdd2
+    BorderColor #b71c1c
+    FontColor #b71c1c
+    FontStyle bold
+    BorderThickness 2
+}
+
+' Control: Blue tones - Enhanced contrast
+skinparam rectangle<<Control>> {
+    BackgroundColor #bbdefb
+    BorderColor #0d47a1
+    FontColor #0d47a1
+    FontStyle bold
+    BorderThickness 2
+}
+
+' Communication: Light Blue - Enhanced contrast
+skinparam rectangle<<Comm>> {
+    BackgroundColor #b3e5fc
+    BorderColor #01579b
+    FontColor #01579b
+    BorderThickness 2
+}
+
+' Lifting: Purple tones - Enhanced contrast
+skinparam rectangle<<Lift>> {
+    BackgroundColor #e1bee7
+    BorderColor #6a1b9a
+    FontColor #4a148c
+    FontStyle bold
+    BorderThickness 2
+}
+
+' Rotation: Teal tones - Enhanced contrast
+skinparam rectangle<<Rot>> {
+    BackgroundColor #b2dfdb
+    BorderColor #00695c
+    FontColor #004d40
+    FontStyle bold
+    BorderThickness 2
+}
+
+' Mechanical: Orange tones - Enhanced contrast
+skinparam rectangle<<Mech>> {
+    BackgroundColor #ffe0b2
+    BorderColor #e65100
+    FontColor #bf360c
+    BorderThickness 2
+}
+
+' Structure: Grey tones - Enhanced contrast
+skinparam rectangle<<Struct>> {
+    BackgroundColor #cfd8dc
+    BorderColor #37474f
+    FontColor #263238
+    BorderStyle dashed
+    BorderThickness 2
+}
+
+' Sensor: Amber tones - Enhanced contrast
+skinparam rectangle<<Sensor>> {
+    BackgroundColor #ffecb3
+    BorderColor #ef6c00
+    FontColor #e65100
+    BorderThickness 2
+}
+
+' Safety: Red/Warning - Enhanced contrast
+skinparam rectangle<<Safety>> {
+    BackgroundColor #ffcdd2
+    BorderColor #c62828
+    FontColor #b71c1c
+    BorderThickness 3
+}
+
+' ==================== POWER DISTRIBUTION (VERTICAL LEFT) ====================
+package "Power Distribution" as PowerSystem #ffe4e1 {
+    rectangle "Main Supply\n**3φ 240V AC**" as MainPower <<Power>>
+    rectangle "Main Breaker" as Breaker <<Power>>
+    rectangle "E-Stop Circuit\n(Emergency)" as EStop <<Safety>>
+    rectangle "Power Cabling\n& Distribution" as Cabling <<Power>>
+
+    MainPower -[#b71c1c,thickness=3]down-> Breaker
+    Breaker -[#b71c1c,thickness=3]down-> EStop
+    EStop -[#b71c1c,thickness=3]down-> Cabling
+}
+
+' ==================== CONTROL CABINET ====================
+package "Control Cabinet (Brain Area)" as ControlCabinet #d0f4de {
+
+    package "Main Controller" as MainController {
+        rectangle "Siemens PLC\n**Main Controller**" as PLC <<Control>>
+        rectangle "Motion Control\nModule" as MotionModule <<Control>>
+        rectangle "Safety Logic\nModule" as SafetyLogic <<Safety>>
+
+        PLC -[hidden]d- MotionModule
+        MotionModule -[hidden]d- SafetyLogic
+    }
+
+    rectangle "HMI Panel\n**Touchscreen**\n• Angle Display\n• Height Display\n• Status/Alarms\n• Manual Jog\n• Recipe Selection" as HMI <<Control>>
+
+    package "Communication Network" as CommNetwork {
+        rectangle "EtherNet/IP\n**Control Bus**" as EtherNetIP <<Comm>>
+        rectangle "EtherCAT\n**Motion Network**" as EtherCAT <<Comm>>
+    }
+
+    package "Motor Drives" as Drives {
+        rectangle "Lift Drive\n**VFD (3-Phase)**" as VFD_Lift <<Control>>
+        rectangle "Rotation Drive\n**Inverter (1-Phase)**" as VFD_Rot <<Control>>
+        rectangle "Brake Relay\n**Spring-Applied**" as BrakeRelay <<Control>>
+    }
+
+    ' Internal control connections
+    HMI <-[#0d47a1,thickness=2]-> EtherNetIP
+    EtherNetIP <-[#0d47a1,thickness=2]-> PLC
+    PLC <-[#0d47a1,thickness=2]-> MotionModule
+    PLC <-[#c62828,thickness=2]-> SafetyLogic
+    MotionModule <-[#01579b,thickness=2]-> EtherCAT
+
+    PLC -[#0d47a1,thickness=2]-> VFD_Lift
+    PLC -[#0d47a1,thickness=2]-> VFD_Rot
+    PLC -[#0d47a1,thickness=2]-> BrakeRelay
+}
+
+' Layout positioning - Power on left, Control in middle
+PowerSystem -[hidden]right- ControlCabinet
+
+' Power to control cabinet
+Cabling =[#b71c1c,thickness=3]=> PLC
+Cabling =[#b71c1c,thickness=3]=> VFD_Lift
+Cabling =[#b71c1c,thickness=3]=> VFD_Rot
+
+' ==================== LIFTING SUBSYSTEM ====================
+package "Lifting Subsystem (Body Area)" as LiftingSystem #fef3e2 {
+
+    package "Actuation System" as LiftActuation {
+        rectangle "Lift Motor\n**3-Phase AC**" as LiftMotor <<Lift>>
+        rectangle "Lead Screw #1\n**Corner A**" as LeadScrew1 <<Mech>>
+        rectangle "Lead Screw #2\n**Corner B**" as LeadScrew2 <<Mech>>
+        rectangle "Synchronization\nMechanism" as SyncMech <<Mech>>
+
+        LiftMotor =[#6a1b9a,thickness=3]=> SyncMech
+        SyncMech =[#e65100,thickness=2]=> LeadScrew1
+        SyncMech =[#e65100,thickness=2]=> LeadScrew2
+    }
+
+    package "Structural Frame" as StructFrame {
+        rectangle "Linear Guide Rails\n**w/ Misalignment\nCompensation**" as GuideRails <<Struct>>
+        rectangle "Support Bracing\n**Min-CD Design**" as Bracing <<Struct>>
+        rectangle "Moving Platform\n**Equipment Shelf**" as MovingPlatform <<Struct>>
+    }
+
+    package "Safety Systems" as LiftSafety {
+        rectangle "Upper Limit\nSwitch" as UpperLimit <<Sensor>>
+        rectangle "Lower Limit\nSwitch" as LowerLimit <<Sensor>>
+        rectangle "Position Encoder\n**Feedback**" as LiftEncoder <<Sensor>>
+    }
+
+    ' Mechanical connections
+    LeadScrew1 =[#e65100,thickness=2]=> MovingPlatform
+    LeadScrew2 =[#e65100,thickness=2]=> MovingPlatform
+    GuideRails ..[#37474f,thickness=2]..> MovingPlatform : Guide
+    Bracing ..[#37474f,thickness=2]..> GuideRails : Support
+}
+
+' Sensor connections - moved outside package, using standard dotted arrows
+UpperLimit ..[#ef6c00,thickness=2]..> PLC : Safety
+LowerLimit ..[#ef6c00,thickness=2]..> PLC : Safety
+LiftEncoder ..[#ef6c00,thickness=2]..> MotionModule : Position
+
+' Drive to motor connection
+VFD_Lift =[#6a1b9a,thickness=3]==> LiftMotor
+
+' ==================== ROTATION SUBSYSTEM ====================
+package "Rotation Subsystem (On Platform)" as RotationSystem #a8e6cf {
+
+    package "Drive Train" as RotDrive {
+        rectangle "Rotation Motor\n**0.33 HP\n1-Phase**" as RotMotor <<Rot>>
+        rectangle "Gearbox\n**Ratio: 1517:1**\n(Self-Locking)" as Gearbox <<Mech>>
+        rectangle "Coupling\n**Torque Rated**" as Coupling <<Mech>>
+    }
+
+    package "Shaft Assembly" as ShaftAssembly {
+        rectangle "Main Shaft\n**Drive Shaft**" as MainShaft <<Mech>>
+        rectangle "Shaft Rings/Collars\n**Positioning**" as ShaftCollars <<Mech>>
+        rectangle "Pillow Block\nBearings" as Bearings <<Mech>>
+        rectangle "Mounting Platform\n**Base Plate**" as Platform <<Struct>>
+    }
+
+    package "Safety & Mounting" as RotSafety {
+        rectangle "Failsafe Brake\n**Spring-Applied\nElectric-Release**" as Brake <<Safety>>
+        rectangle "Fasteners M20\n**w/ Vibration\nDamping Washers**" as Fasteners <<Mech>>
+    }
+
+    rectangle "Tabletop Load\n**2.4m × 1.8m**\n(Custom Built)" as Tabletop <<Rot>>
+
+    rectangle "Rotary Encoder\n**Angle Feedback**" as RotEncoder <<Sensor>>
+
+    ' Drivetrain flow
+    RotMotor =[#00695c,thickness=3]=> Gearbox
+    Gearbox =[#e65100,thickness=2]=> Coupling
+    Coupling =[#e65100,thickness=2]=> MainShaft
+
+    ' Shaft support
+    ShaftCollars ..[#37474f,thickness=2]..> MainShaft : Position
+    Bearings ..[#37474f,thickness=2]..> MainShaft : Support
+    Platform ..[#37474f,thickness=2]..> Bearings : Mount
+    Fasteners ..[#37474f,thickness=2]..> Platform : Secure
+
+    ' Brake and load
+    Brake ..[#c62828,thickness=3]..> MainShaft : Hold
+    MainShaft =[#00695c,thickness=3]=> Tabletop : Rotate
+}
+
+' Rotary encoder feedback - moved outside package
+RotEncoder ..[#ef6c00,thickness=2]..> MotionModule : Angle
+
+' Drive to motor connection
+VFD_Rot =[#00695c,thickness=3]==> RotMotor
+BrakeRelay -[#c62828,thickness=2]-> Brake : Release
+
+' Layout positioning - Lift and Rotation side by side
+ControlCabinet -[hidden]down- LiftingSystem
+LiftingSystem -[hidden]right- RotationSystem
+
+' Platform carries rotation system
+MovingPlatform =[#37474f,thickness=3]==> Platform : **Vertical\nLoad Path**
+
+' ==================== LEGEND ====================
+legend bottom right
+    **Connection Types**
+    ----
+    <color:#b71c1c>▬▬▬</color> Power Flow (3φ AC)
+    <color:#0d47a1>▬▬▬</color> Control Signals
+    <color:#01579b>▬▬▬</color> Communication Bus
+    <color:#e65100>▬▬▬</color> Mechanical Power
+    <color:#37474f>┄┄┄</color> Structural Support
+    <color:#ef6c00>━ ━</color> Sensor Feedback
+    <color:#c62828>▬▬▬</color> Safety Interlock
+    ----
+    **System Specifications**
+    • Max Rotation: 1 RPM (360°)
+    • Motor: 0.33 HP (1-Phase)
+    • Gearbox: 1517:1 (Self-Lock)
+    • Tabletop: 2.4m × 1.8m
+    • Power: 3φ 240V AC
+    • Fasteners: M20 Bolts
+    ----
+    **Improved V2 Features:**
+    • Enhanced contrast & visibility
+    • Power distribution on left (vertical)
+    • Flexible arrow routing (allows corners)
+    • Thicker borders (2-3px)
+    • Darker colors for clarity
+endlegend
+
+@enduml

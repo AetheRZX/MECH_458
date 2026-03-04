@@ -1,0 +1,34 @@
+graph TD
+    linkStyle default interpolate stepAfter stroke:#555,stroke-width:2px;
+
+    classDef lift fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#4a148c;
+    classDef struct fill:#eceff1,stroke:#455a64,stroke-width:2px,color:#37474f;
+    classDef in fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
+
+    Input("VFD Output<br/>(3-Phase)"):::in
+    
+    subgraph Actuation [Actuation]
+        direction TB
+        Motor("Lift Motor<br/>3-Phase"):::lift
+        Jack("Jack Screw Assembly"):::struct
+    end
+    style Actuation fill:#ffffff,stroke:#4a148c,stroke-width:1px
+    
+    subgraph Structure [Structural Support]
+        direction TB
+        Guides("Linear Guides"):::struct
+        Bracing("Support Bracing"):::struct
+        Shelf("Equipment Shelf"):::struct
+    end
+    style Structure fill:#ffffff,stroke:#607d8b,stroke-width:1px
+    
+    Rotation("Rotation Subsystem"):::lift
+
+    Input ==> Motor
+    Motor ==> Jack
+    Jack ==> Shelf
+    
+    Guides -.-> Shelf
+    Bracing -.-> Guides
+    
+    Shelf ==> Rotation

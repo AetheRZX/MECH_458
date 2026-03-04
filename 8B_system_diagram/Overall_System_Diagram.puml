@@ -1,0 +1,140 @@
+@startuml Overall_System_Diagram
+
+skinparam linetype ortho
+skinparam nodesep 80
+skinparam ranksep 80
+hide stereotype
+
+' Professional Color Palette
+' Control: Blue
+skinparam rectangle<<Control>> {
+    BackgroundColor #e1f5fe
+    BorderColor #01579b
+    FontColor #01579b
+}
+' Power: Red
+skinparam rectangle<<Power>> {
+    BackgroundColor #ffebee
+    BorderColor #b71c1c
+    FontColor #b71c1c
+}
+' Lift: Purple
+skinparam rectangle<<Lift>> {
+    BackgroundColor #f3e5f5
+    BorderColor #4a148c
+    FontColor #4a148c
+}
+' Rotation: Teal
+skinparam rectangle<<Rot>> {
+    BackgroundColor #e0f2f1
+    BorderColor #00695c
+    FontColor #00695c
+}
+' Structure: Grey
+skinparam rectangle<<Struct>> {
+    BackgroundColor #eceff1
+    BorderColor #455a64
+    FontColor #37474f
+    BorderStyle dashed
+}
+' Sensor: Orange
+skinparam rectangle<<Sensor>> {
+    BackgroundColor #fff3e0
+    BorderColor #e65100
+    FontColor #e65100
+}
+
+package "Power Distribution" as Power_System {
+    rectangle "Main Power\n3Ph 240V" as Mains <<Power>>
+    rectangle "Main Breaker &\nE-Stop" as Breaker <<Power>>
+}
+
+package "Control Cabinet" as Control_System {
+    rectangle "Main PLC\nController" as PLC <<Control>>
+    rectangle "HMI Panel" as HMI <<Control>>
+    rectangle "EtherNet/IP\nBus" as Comm <<Control>>
+    
+    rectangle "Motor Drivers" as Drives {
+        rectangle "Lift Drive\n(3-Phase)" as VFD_Lift <<Control>>
+        rectangle "Rotation Drive\n(1-Phase)" as VFD_Rot <<Control>>
+        rectangle "Brake Relay" as Relay <<Control>>
+    }
+}
+
+package "Lifting Subsystem" as Lift_System {
+    
+    rectangle "Actuation" as Actuation_Group {
+        rectangle "Lift Motor\n(3-Phase)" as LiftMotor <<Lift>>
+        rectangle "Jack Screw\nAssembly" as JackScrew <<Lift>>
+    }
+    
+    package "Structural Frame" as Structure {
+        rectangle "Linear Guides" as Guides <<Struct>>
+        rectangle "Support Bracing" as Bracing <<Struct>>
+        rectangle "Moving Shelf /\nPlatform" as Shelf <<Struct>>
+    }
+
+    ' Force Structure below Actuation (Vertical Stack)
+    JackScrew -[hidden]d- Guides
+}
+
+package "Rotation Subsystem (On Shelf)" as Rot_System {
+    rectangle "Rot Motor\n(1-Phase)" as RotMotor <<Rot>>
+    rectangle "Gearbox\n1517:1" as Gearbox <<Rot>>
+    rectangle "Coupling &\nBearings" as Drivetrain <<Rot>>
+    rectangle "Main Shaft" as Shaft <<Rot>>
+    rectangle "Tabletop Load" as Tabletop <<Rot>>
+    rectangle "Failsafe Brake" as Brake <<Rot>>
+}
+
+' Force Rotation to the Right of Lifting (Align Tops)
+' Force Rotation to the Right of Lifting (Align Tops - Node to Node)
+LiftMotor -[hidden]r- RotMotor
+
+package "Sensors" as Sensors_System {
+    rectangle "Limit Switches" as LimitSw <<Sensor>>
+    rectangle "Rotary Encoders" as Encoder <<Sensor>>
+}
+
+' Power Flow
+Mains ==> Breaker
+Breaker ==> PLC
+Breaker ==> VFD_Lift
+Breaker ==> VFD_Rot
+
+' Control Flow
+HMI <--> Comm
+Comm <--> PLC
+PLC --> VFD_Lift
+PLC --> VFD_Rot
+PLC --> Relay
+
+' Drive Connections
+VFD_Lift ==> LiftMotor
+VFD_Rot ==> RotMotor
+Relay ..> Brake
+
+' Lifting Mechanics
+LiftMotor ==> JackScrew
+JackScrew ==> Shelf
+Guides ..> Shelf
+Bracing ..> Guides
+
+' Support Relationship
+Shelf ==> RotMotor : Holds
+
+' Rotation Mechanics
+RotMotor ==> Gearbox
+Gearbox ==> Drivetrain
+Drivetrain ==> Shaft
+Brake ..> Shaft
+Shaft ==> Tabletop
+
+' Feedback
+LimitSw --> PLC : Safety
+Encoder --> PLC : Feedback
+
+
+
+
+@enduml

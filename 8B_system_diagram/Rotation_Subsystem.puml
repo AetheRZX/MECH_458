@@ -1,0 +1,46 @@
+@startuml Rotation_Subsystem
+
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 40
+left to right direction
+
+' Styling
+skipparam rectangle<<Rot>> {
+    BackgroundColor #e0f2f1
+    BorderColor #00695c
+    FontColor #00695c
+}
+skinparam rectangle<<Mech>> {
+    BackgroundColor #fff3e0
+    BorderColor #e65100
+    FontColor #e65100
+}
+skinparam rectangle<<Input>> {
+    BackgroundColor #e1f5fe
+    BorderColor #01579b
+    FontColor #01579b
+}
+
+rectangle "VFD Output\n(1-Phase)" as Input <<Input>>
+rectangle "Rotation Motor\n(1-Phase)" as Motor <<Rot>>
+rectangle "Gearbox\n1517:1" as Gearbox <<Mech>>
+
+rectangle "Shaft Assembly" as Assembly {
+    rectangle "Coupling" as Coupling <<Mech>>
+    rectangle "Drive Shaft" as Shaft <<Mech>>
+    rectangle "Bearings" as Bearings <<Mech>>
+}
+
+rectangle "Failsafe Brake" as Brake <<Rot>>
+rectangle "Tabletop Load" as Tabletop <<Mech>>
+
+Input ==> Motor
+Motor ==> Gearbox
+Gearbox ==> Coupling
+Coupling ==> Shaft
+Bearings ..> Shaft
+Brake ..> Shaft : Hold
+Shaft ==> Tabletop
+
+@enduml

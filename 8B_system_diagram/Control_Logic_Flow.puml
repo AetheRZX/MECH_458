@@ -1,0 +1,44 @@
+@startuml Control_Logic_Flow
+
+skinparam linetype ortho
+
+' Styling
+skinparam activity {
+    BackgroundColor #e1f5fe
+    BorderColor #01579b
+    FontColor #01579b
+}
+skinparam activity<<Action>> {
+    BackgroundColor #e8f5e9
+    BorderColor #2e7d32
+    FontColor #1b5e20
+}
+skinparam activity<<Error>> {
+    BackgroundColor #ffebee
+    BorderColor #b71c1c
+    FontColor #b71c1c
+}
+
+start
+if (Safety Check?) then (NO)
+    :HALT / ERROR; <<Error>>
+    stop
+else (YES)
+    :System Ready;
+endif
+
+:Wait for HMI Input;
+:Calculate Profile;
+
+:Send VFD Command; <<Action>>
+:Motor Motion; <<Action>>
+
+while (Target Reached?) is (NO)
+    :Read Encoders;
+    :Calculate Profile;
+endwhile (YES)
+
+:Engage Brakes; <<Action>>
+stop
+
+@enduml

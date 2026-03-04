@@ -1,0 +1,29 @@
+graph LR
+    linkStyle default interpolate stepAfter stroke:#555,stroke-width:2px;
+
+    classDef rot fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#00695c;
+    classDef mech fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#e65100;
+    classDef in fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
+
+    Input("VFD Output<br/>(1-Phase)"):::in
+    Motor("Rotation Motor<br/>(1-Phase)"):::rot
+    Gearbox("Gearbox<br/>1517:1"):::mech
+    
+    subgraph Assm [Shaft Assembly]
+        direction TB
+        Coupling("Coupling"):::mech
+        Bearings("Bearings"):::mech
+        Shaft("Drive Shaft"):::mech
+    end
+    style Assm fill:#fff8e1,stroke:#ff8f00,stroke-width:1px
+    
+    Brake("Failsafe Brake"):::rot
+    Tabletop("Tabletop Load"):::mech
+
+    Input ==> Motor
+    Motor ==> Gearbox
+    Gearbox ==> Coupling
+    Coupling ==> Shaft
+    Bearings -.-> Shaft
+    Brake -.->|"Hold"| Shaft
+    Shaft ==> Tabletop
